@@ -1,209 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Tic-Tac-Toe Deluxe</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe</title>
+    <script src="arcade.js"></script>
     <style>
-        * { box-sizing: border-box; touch-action: manipulation; }
-        body { margin: 0; background: #1a1a2e; color: white; font-family: sans-serif; text-align: center; padding: 10px; }
-        .ui { font-size: 16px; margin: 10px; }
-        .options { margin: 10px auto; max-width: 320px; display: flex; flex-direction: column; gap: 8px; background: #16213e; padding: 10px; border-radius: 8px; }
-        select, button { padding: 8px 12px; font-size: 14px; font-weight: bold; border-radius: 6px; background: #0f3460; color: white; border: 1px solid #4ecca3; }
-        button.action-btn { background: #e94560; border: none; cursor: pointer; margin-top: 5px; }
-        .grid { display: grid; gap: 8px; max-width: 300px; margin: 15px auto; justify-content: center; }
-        .cell { width: 80px; height: 80px; background: #0f3460; border: 2px solid #4ecca3; border-radius: 10px; font-size: 36px; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; color: #4ecca3; }
-        .cell.o-mark { color: #e94560; }
-        a { color: #4ecca3; text-decoration: none; font-size: 16px; display: inline-block; margin-top: 15px; }
+        body { background: #0f172a; color: white; text-align: center; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .grid { display: grid; grid-template-columns: repeat(3, 90px); gap: 10px; margin: 20px 0; }
+        .cell { width: 90px; height: 90px; background: #1e293b; border: 2px solid #38bdf8; border-radius: 8px; font-size: 2.5rem; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; }
+        .cell.x { color: #38bdf8; }
+        .cell.o { color: #ef4444; }
+        .info { font-size: 1.2rem; }
+        button { background: #38bdf8; color: #0f172a; border: none; padding: 10px 20px; font-size: 1rem; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 10px; }
+        a { color: #38bdf8; text-decoration: none; margin-top: 15px; display: inline-block; }
     </style>
 </head>
 <body>
-
-    <h2>❌ Tic-Tac-Toe Deluxe ⭕</h2>
-    <div class="ui">
-        X Wins: <span id="xWins">0</span> | O Wins: <span id="oWins">0</span> | Streak: <span id="streak">0</span>
+    <div class="info" id="status">Your Turn (X)</div>
+    <div class="grid" id="board">
+        <div class="cell" onclick="makeMove(0)"></div>
+        <div class="cell" onclick="makeMove(1)"></div>
+        <div class="cell" onclick="makeMove(2)"></div>
+        <div class="cell" onclick="makeMove(3)"></div>
+        <div class="cell" onclick="makeMove(4)"></div>
+        <div class="cell" onclick="makeMove(5)"></div>
+        <div class="cell" onclick="makeMove(6)"></div>
+        <div class="cell" onclick="makeMove(7)"></div>
+        <div class="cell" onclick="makeMove(8)"></div>
     </div>
+    <button onclick="resetGame()">Reset Board</button>
+    <a href="index.html">← Back to Hub</a>
 
-    <div class="options">
-        <div>
-            <label>Mode: </label>
-            <select id="gameMode" onchange="resetBoard()">
-                <option value="ai">Vs AI Bot</option>
-                <option value="pvp">2-Player Local</option>
-            </select>
-        </div>
-        <div>
-            <label>AI Level: </label>
-            <select id="aiLevel" onchange="resetBoard()">
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="unbeatable" selected>Unbeatable 🧠</option>
-            </select>
-        </div>
-        <button class="action-btn" onclick="resetBoard()">Restart Game</button>
-    </div>
+    <script>
+        let board = ["", "", "", "", "", "", "", "", ""];
+        let gameActive = true;
+        const winPatterns = [
+            [0,1,2], [3,4,5], [6,7,8],
+            [0,3,6], [1,4,7], [2,5,8],
+            [0,4,8], [2,4,6]
+        ];
 
-    <div class="grid" id="grid"></div>
+        function makeMove(index) {
+            if (board[index] !== "" || !gameActive) return;
 
-    <p><a href="index.html">⬅️ Back to Game Hub</a></p>
+            board[index] = "X";
+            render();
 
-<script>
-let board = Array(9).fill("");
-let currentPlayer = "X";
-let gameOver = false;
-
-let xWins = parseInt(localStorage.getItem("ttt_xWins")) || 0;
-let oWins = parseInt(localStorage.getItem("ttt_oWins")) || 0;
-let streak = parseInt(localStorage.getItem("ttt_streak")) || 0;
-
-function updateUI() {
-    document.getElementById("xWins").innerText = xWins;
-    document.getElementById("oWins").innerText = oWins;
-    document.getElementById("streak").innerText = streak;
-}
-updateUI();
-
-function initGrid() {
-    const grid = document.getElementById("grid");
-    grid.style.gridTemplateColumns = "repeat(3, 1fr)";
-    grid.innerHTML = "";
-
-    board.forEach((val, index) => {
-        const cell = document.createElement("div");
-        cell.classList.add("cell");
-        if (val === "O") cell.classList.add("o-mark");
-        cell.innerText = val;
-        cell.addEventListener("click", () => handleCellClick(index));
-        grid.appendChild(cell);
-    });
-}
-
-function handleCellClick(index) {
-    if (board[index] !== "" || gameOver) return;
-
-    board[index] = currentPlayer;
-    initGrid();
-
-    if (checkWin(board, currentPlayer)) {
-        gameOver = true;
-        handleWin(currentPlayer);
-        return;
-    }
-
-    if (board.every(cell => cell !== "")) {
-        gameOver = true;
-        setTimeout(() => alert("It's a Draw!"), 100);
-        return;
-    }
-
-    currentPlayer = currentPlayer === "X" ? "O" : "X";
-
-    let mode = document.getElementById("gameMode").value;
-    if (mode === "ai" && currentPlayer === "O" && !gameOver) {
-        setTimeout(makeAIMove, 250);
-    }
-}
-
-function makeAIMove() {
-    let level = document.getElementById("aiLevel").value;
-    let move;
-
-    if (level === "easy") {
-        let empty = board.map((v, i) => v === "" ? i : null).filter(v => v !== null);
-        move = empty[Math.floor(Math.random() * empty.length)];
-    } else if (level === "medium") {
-        move = Math.random() < 0.5 ? getBestMove() : getRandomMove();
-    } else {
-        move = getBestMove();
-    }
-
-    if (move !== undefined) handleCellClick(move);
-}
-
-function getRandomMove() {
-    let empty = board.map((v, i) => v === "" ? i : null).filter(v => v !== null);
-    return empty[Math.floor(Math.random() * empty.length)];
-}
-
-function getBestMove() {
-    let bestScore = -Infinity;
-    let bestMove;
-    for (let i = 0; i < 9; i++) {
-        if (board[i] === "") {
-            board[i] = "O";
-            let score = minimax(board, 0, false);
-            board[i] = "";
-            if (score > bestScore) {
-                bestScore = score;
-                bestMove = i;
+            if (checkWin("X")) {
+                document.getElementById("status").innerText = "You Win!";
+                gameActive = false;
+                if (window.Arcade && Arcade.addCoins) Arcade.addCoins(3);
+                return;
             }
-        }
-    }
-    return bestMove;
-}
 
-function minimax(newBoard, depth, isMaximizing) {
-    if (checkWin(newBoard, "O")) return 10 - depth;
-    if (checkWin(newBoard, "X")) return depth - 10;
-    if (newBoard.every(c => c !== "")) return 0;
-
-    if (isMaximizing) {
-        let bestScore = -Infinity;
-        for (let i = 0; i < 9; i++) {
-            if (newBoard[i] === "") {
-                newBoard[i] = "O";
-                let score = minimax(newBoard, depth + 1, false);
-                newBoard[i] = "";
-                bestScore = Math.max(score, bestScore);
+            if (board.every(cell => cell !== "")) {
+                document.getElementById("status").innerText = "It's a Tie!";
+                gameActive = false;
+                if (window.Arcade && Arcade.addCoins) Arcade.addCoins(1);
+                return;
             }
+
+            document.getElementById("status").innerText = "AI is thinking...";
+            gameActive = false;
+            setTimeout(aiMove, 400);
         }
-        return bestScore;
-    } else {
-        let bestScore = Infinity;
-        for (let i = 0; i < 9; i++) {
-            if (newBoard[i] === "") {
-                newBoard[i] = "X";
-                let score = minimax(newBoard, depth + 1, true);
-                newBoard[i] = "";
-                bestScore = Math.min(score, bestScore);
+
+        function aiMove() {
+            let emptyIndices = board.map((val, idx) => val === "" ? idx : null).filter(v => v !== null);
+            if (emptyIndices.length === 0) return;
+
+            let randomIndex = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+            board[randomIndex] = "O";
+            render();
+
+            if (checkWin("O")) {
+                document.getElementById("status").innerText = "AI Wins!";
+                gameActive = false;
+                return;
             }
+
+            if (board.every(cell => cell !== "")) {
+                document.getElementById("status").innerText = "It's a Tie!";
+                gameActive = false;
+                if (window.Arcade && Arcade.addCoins) Arcade.addCoins(1);
+                return;
+            }
+
+            document.getElementById("status").innerText = "Your Turn (X)";
+            gameActive = true;
         }
-        return bestScore;
-    }
-}
 
-function checkWin(b, player) {
-    const wins = [
-        [0,1,2], [3,4,5], [6,7,8],
-        [0,3,6], [1,4,7], [2,5,8],
-        [0,4,8], [2,4,6]
-    ];
-    return wins.some(w => w.every(i => b[i] === player));
-}
+        function checkWin(player) {
+            return winPatterns.some(pattern => pattern.every(index => board[index] === player));
+        }
 
-function handleWin(winner) {
-    if (winner === "X") {
-        xWins++;
-        streak++;
-        localStorage.setItem("ttt_xWins", xWins);
-        localStorage.setItem("ttt_streak", streak);
-    } else {
-        oWins++;
-        streak = 0;
-        localStorage.setItem("ttt_oWins", oWins);
-        localStorage.setItem("ttt_streak", 0);
-    }
-    updateUI();
-    setTimeout(() => alert(`🎉 Player ${winner} Wins!`), 100);
-}
+        function render() {
+            const cells = document.querySelectorAll(".cell");
+            cells.forEach((cell, index) => {
+                cell.innerText = board[index];
+                cell.className = "cell " + board[index].toLowerCase();
+            });
+        }
 
-function resetBoard() {
-    board = Array(9).fill("");
-    currentPlayer = "X";
-    gameOver = false;
-    initGrid();
-}
-
-resetBoard();
-</script>
+        function resetGame() {
+            board = ["", "", "", "", "", "", "", "", ""];
+            gameActive = true;
+            document.getElementById("status").innerText = "Your Turn (X)";
+            render();
+        }
+    </script>
 </body>
 </html>
