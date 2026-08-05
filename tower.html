@@ -1,207 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Tower Stacker DX</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tower Stacker</title>
+    <script src="arcade.js"></script>
     <style>
-        * { box-sizing: border-box; touch-action: manipulation; }
-        body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; text-align: center; padding: 10px; }
-        .ui { font-size: 16px; margin: 10px; display: flex; justify-content: space-around; max-width: 320px; margin: 10px auto; }
-        canvas { background: #1e293b; border: 3px solid #cbd5e1; border-radius: 10px; display: block; margin: 10px auto; }
-        .controls { max-width: 320px; margin: 10px auto; }
-        .drop-btn { width: 100%; padding: 15px; font-size: 20px; font-weight: bold; background: #38bdf8; color: #0f172a; border: none; border-radius: 8px; cursor: pointer; }
-        .drop-btn:active { background: #0284c7; color: white; }
-        .shop { background: #1e293b; padding: 10px; max-width: 320px; margin: 10px auto; border-radius: 8px; border: 1px solid #334155; }
-        button.shop-btn { padding: 6px 12px; font-size: 13px; font-weight: bold; background: #10b981; color: white; border: none; border-radius: 5px; margin: 4px; cursor: pointer; }
-        button.shop-btn:disabled { background: #334155; color: #64748b; }
-        a { color: #38bdf8; text-decoration: none; font-size: 16px; display: inline-block; margin-top: 15px; }
+        body { background: #0f172a; color: white; text-align: center; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        canvas { background: #1e293b; border: 2px solid #38bdf8; border-radius: 8px; cursor: pointer; }
+        .info { font-size: 1.2rem; margin-bottom: 10px; }
+        p { color: #94a3b8; font-size: 0.9rem; margin-top: 8px; }
+        a { color: #38bdf8; text-decoration: none; margin-top: 15px; display: inline-block; }
     </style>
 </head>
 <body>
+    <div class="info">Height: <span id="score">0</span></div>
+    <canvas id="game" width="300" height="400" onclick="dropBlock()"></canvas>
+    <p>Click or Press Space to stack the block</p>
+    <a href="index.html">← Back to Hub</a>
 
-    <h2>🏗️ Tower Stacker DX</h2>
-    <div class="ui">
-        <div>Height: <span id="score">0</span></div>
-        <div>Coins: $<span id="coins">0</span></div>
-        <div>Best: <span id="highScore">0</span></div>
-    </div>
+    <script>
+        const canvas = document.getElementById("game");
+        const ctx = canvas.getContext("2d");
 
-    <canvas id="gameCanvas" width="300" height="400"></canvas>
+        let stack = [];
+        let currentBlock = { x: 0, y: 360, width: 100, speed: 3, dir: 1 };
+        let blockHeight = 20;
+        let gameOver = false;
+        let score = 0;
 
-    <div class="controls">
-        <button class="drop-btn" onclick="dropBlock()">🧱 DROP BLOCK</button>
-    </div>
-
-    <div class="shop">
-        <h3>Theme Shop</h3>
-        <button class="shop-btn" onclick="setTheme('#38bdf8')">🟦 Classic Cyan</button>
-        <button class="shop-btn" id="goldBtn" onclick="buyTheme('#eab308', 25)">🟨 Gold ($25)</button>
-        <button class="shop-btn" id="rubyBtn" onclick="buyTheme('#f43f5e', 50)">🟥 Ruby ($50)</button>
-    </div>
-
-    <p><a href="index.html">⬅️ Back to Game Hub</a></p>
-
-<script>
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-
-let coins = parseInt(localStorage.getItem("tower_coins")) || 0;
-let highScore = parseInt(localStorage.getItem("tower_highScore")) || 0;
-let blockColor = localStorage.getItem("tower_theme") || "#38bdf8";
-let unlockedGold = localStorage.getItem("tower_gold") === "true";
-let unlockedRuby = localStorage.getItem("tower_ruby") === "true";
-
-let stack = [];
-let currentBlock = { x: 0, y: 360, width: 140, height: 25, speed: 2.5, dir: 1 };
-let score = 0;
-let gameOver = false;
-let cameraY = 0;
-
-function updateUI() {
-    document.getElementById("score").innerText = score;
-    document.getElementById("coins").innerText = coins;
-    document.getElementById("highScore").innerText = highScore;
-
-    document.getElementById("goldBtn").innerText = unlockedGold ? "🟨 Gold" : "🟨 Gold ($25)";
-    document.getElementById("goldBtn").disabled = !unlockedGold && coins < 25;
-
-    document.getElementById("rubyBtn").innerText = unlockedRuby ? "🟥 Ruby" : "🟥 Ruby ($50)";
-    document.getElementById("rubyBtn").disabled = !unlockedRuby && coins < 50;
-}
-
-function setTheme(color) {
-    if (color === '#eab308' && !unlockedGold) return;
-    if (color === '#f43f5e' && !unlockedRuby) return;
-    blockColor = color;
-    localStorage.setItem("tower_theme", color);
-}
-
-function buyTheme(color, cost) {
-    if ((color === '#eab308' && unlockedGold) || (color === '#f43f5e' && unlockedRuby)) {
-        return setTheme(color);
-    }
-    if (coins >= cost) {
-        coins -= cost;
-        if (color === '#eab308') unlockedGold = true;
-        if (color === '#f43f5e') unlockedRuby = true;
-        localStorage.setItem("tower_coins", coins);
-        localStorage.setItem("tower_" + (color === '#eab308' ? "gold" : "ruby"), "true");
-        setTheme(color);
-        updateUI();
-    }
-}
-
-function resetGame() {
-    score = 0;
-    cameraY = 0;
-    gameOver = false;
-    stack = [{ x: 80, y: 375, width: 140, height: 25 }];
-    currentBlock = {
-        x: 0,
-        y: 350,
-        width: 140,
-        height: 25,
-        speed: 2.5,
-        dir: 1
-    };
-    updateUI();
-}
-
-function dropBlock() {
-    if (gameOver) return;
-
-    let prev = stack[stack.length - 1];
-    let diff = currentBlock.x - prev.x;
-
-    // Overlap check
-    if (Math.abs(diff) >= currentBlock.width) {
-        gameOver = true;
-        setTimeout(() => {
-            alert(`💥 Tower Collapsed! Final Height: ${score}`);
-            resetGame();
-        }, 100);
-        return;
-    }
-
-    // Chop off the overhang
-    let newWidth = currentBlock.width - Math.abs(diff);
-    let newX = diff > 0 ? currentBlock.x : prev.x;
-
-    stack.push({ x: newX, y: currentBlock.y, width: newWidth, height: currentBlock.height });
-
-    score++;
-    coins += 1;
-    if (score > highScore) {
-        highScore = score;
-        localStorage.setItem("tower_highScore", highScore);
-    }
-    localStorage.setItem("tower_coins", coins);
-    updateUI();
-
-    // Prepare Next Block
-    let nextY = currentBlock.y - 25;
-    if (nextY < 200) {
-        cameraY += 25;
-    }
-
-    currentBlock = {
-        x: 0,
-        y: nextY,
-        width: newWidth,
-        height: 25,
-        speed: 2.5 + Math.min(score * 0.15, 6),
-        dir: 1
-    };
-}
-
-document.addEventListener("keydown", e => {
-    if (e.key === " " || e.key === "ArrowDown") dropBlock();
-});
-
-function update() {
-    if (!gameOver) {
-        currentBlock.x += currentBlock.speed * currentBlock.dir;
-        if (currentBlock.x <= 0 || currentBlock.x + currentBlock.width >= canvas.width) {
-            currentBlock.dir *= -1;
+        function init() {
+            stack = [{ x: 100, y: 380, width: 100 }];
+            currentBlock = { x: 0, y: 360, width: 100, speed: 3, dir: 1 };
+            score = 0;
+            gameOver = false;
+            document.getElementById("score").innerText = score;
         }
-    }
-}
 
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+        function dropBlock() {
+            if (gameOver) {
+                init();
+                return;
+            }
 
-    ctx.save();
-    ctx.translate(0, cameraY);
+            const prevBlock = stack[stack.length - 1];
+            const diff = currentBlock.x - prevBlock.x;
 
-    // Draw Stacked Blocks
-    stack.forEach((b, idx) => {
-        ctx.fillStyle = blockColor;
-        ctx.fillRect(b.x, b.y, b.width, b.height);
-        ctx.strokeStyle = "#0f172a";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(b.x, b.y, b.width, b.height);
-    });
+            if (Math.abs(diff) >= currentBlock.width) {
+                gameOver = true;
+                alert("Game Over! Tower Height: " + score);
+                return;
+            }
 
-    // Draw Moving Block
-    if (!gameOver) {
-        ctx.fillStyle = blockColor;
-        ctx.fillRect(currentBlock.x, currentBlock.y, currentBlock.width, currentBlock.height);
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(currentBlock.x, currentBlock.y, currentBlock.width, currentBlock.height);
-    }
+            // Calculate overlap width
+            const newWidth = currentBlock.width - Math.abs(diff);
+            const newX = diff > 0 ? currentBlock.x : prevBlock.x;
 
-    ctx.restore();
-}
+            stack.push({ x: newX, y: currentBlock.y, width: newWidth });
+            score++;
+            document.getElementById("score").innerText = score;
 
-function loop() {
-    update();
-    draw();
-    requestAnimationFrame(loop);
-}
+            // Award 1 coin per successful stack
+            if (window.Arcade && Arcade.addCoins) Arcade.addCoins(1);
 
-resetGame();
-loop();
-</script>
+            // Award 5 bonus coins for reaching height 15
+            if (score === 15) {
+                if (window.Arcade && Arcade.addCoins) Arcade.addCoins(5);
+            }
+
+            // Move camera down if reaching upper area
+            if (currentBlock.y <= 150) {
+                stack.forEach(b => b.y += blockHeight);
+            } else {
+                currentBlock.y -= blockHeight;
+            }
+
+            currentBlock.width = newWidth;
+            currentBlock.x = 0;
+            currentBlock.speed = Math.min(8, currentBlock.speed + 0.2);
+        }
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === " " || e.key === "ArrowDown") dropBlock();
+        });
+
+        function update() {
+            if (gameOver) return;
+
+            currentBlock.x += currentBlock.speed * currentBlock.dir;
+            if (currentBlock.x <= 0 || currentBlock.x + currentBlock.width >= canvas.width) {
+                currentBlock.dir *= -1;
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw stacked blocks
+            stack.forEach((b, i) => {
+                ctx.fillStyle = i === 0 ? "#475569" : `hsl(${(i * 25) % 360}, 80%, 60%)`;
+                ctx.fillRect(b.x, b.y, b.width, blockHeight - 2);
+            });
+
+            // Draw current moving block
+            if (!gameOver) {
+                ctx.fillStyle = `hsl(${(stack.length * 25) % 360}, 80%, 60%)`;
+                ctx.fillRect(currentBlock.x, currentBlock.y, currentBlock.width, blockHeight - 2);
+            }
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        init();
+        gameLoop();
+    </script>
 </body>
 </html>
