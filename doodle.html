@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Doodle Jump DX</title>
+    <style>
+        * { box-sizing: border-box; touch-action: manipulation; }
+        body { margin: 0; background: #1a1a2e; color: white; font-family: sans-serif; text-align: center; padding: 10px; }
+        .ui { font-size: 16px; margin: 5px; display: flex; justify-content: space-around; max-width: 320px; margin: 5px auto; }
+        canvas { background: #0f3460; border: 3px solid #e94560; border-radius: 10px; display: block; margin: 10px auto; }
+        .controls { display: flex; justify-content: center; gap: 20px; margin-top: 10px; }
+        .btn { width: 80px; height: 50px; font-size: 24px; background: #e94560; color: white; border: none; border-radius: 8px; font-weight: bold; }
+        .shop { background: #16213e; padding: 10px; max-width: 320px; margin: 10px auto; border-radius: 8px; border: 1px solid #0f3460; }
+        button.shop-btn { padding: 6px 10px; font-size: 12px; font-weight: bold; background: #4ecca3; color: #000; border: none; border-radius: 5px; margin: 3px; cursor: pointer; }
+        button.shop-btn:disabled { background: #555; color: #888; }
+        a { color: #4ecca3; text-decoration: none; font-size: 16px; display: inline-block; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <h2>🚀 Doodle Jump DX</h2>
+    <div class="ui">
+        <div>Score: <span id="score">0</span></div>
+        <div>Coins: $<span id="coins">0</span></div>
+        <div>Best: <span id="highScore">0</span></div>
+    </div>
+
+    <canvas id="gameCanvas" width="320" height="420"></canvas>
+
+    <div class="controls">
+        <button class="btn" onmousedown="moveLeft()" onmouseup="stopMove()" ontouchstart="moveLeft()" ontouchend="stopMove()">⬅️</button>
+        <button class="btn" onmousedown="moveRight()" onmouseup="stopMove()" ontouchstart="moveRight()" ontouchend="stopMove()">➡️</button>
+    </div>
+
+    <div class="shop">
+        <h3>Skin Shop</h3>
+        <button class="shop-btn" onclick="setSkin('🟢')">🟢 Classic</button>
+        <button class="shop-btn" id="catBtn" onclick="buySkin('🐱', 20)">🐱 Cat ($20)</button>
+        <button class="shop-btn" id="alienBtn" onclick="buySkin('👾', 40)">👾 Alien ($40)</button>
+    </div>
+
+    <p><a href="index.html">⬅️ Back to Game Hub</a></p>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let coins = parseInt(localStorage.getItem("doodle_coins")) || 0;
+let highScore = parseInt(localStorage.getItem("doodle_highScore")) || 0;
+let currentSkin = localStorage.getItem("doodle_skin") || "🟢";
+let unlockedCat = localStorage.getItem("doodle_cat") === "true";
+let unlockedAlien = localStorage.getItem("doodle_alien") === "true";
+
+let player = { x: 145, y: 300, width: 30, height: 30, vx: 0, vy: 0, gravity: 0.3, jumpPower: -8.5 };
+let platforms = [];
+let coinItems = [];
+let score = 0;
+let gameOver = false;
+
+function updateUI() {
+    document.getElementById("score").innerText = score;
+    document.getElementById("coins").innerText = coins;
+    document.getElementById("highScore").innerText = highScore;
+
+    document.getElementById("catBtn").innerText = unlockedCat ? "🐱 Cat" : "🐱 Cat ($20)";
+    document.getElementById("catBtn").disabled = !unlockedCat && coins < 20;
+
+    document.getElementById("alienBtn").innerText = unlockedAlien ? "👾 Alien" : "👾 Alien ($40)";
+    document.getElementById("alienBtn").disabled = !unlockedAlien && coins < 40;
+}
+
+function setSkin(s) {
+    if (s === '🐱' && !unlockedCat) return;
+    if (s === '👾' && !unlockedAlien) return;
+    currentSkin = s;
+    localStorage.setItem("doodle_skin", s);
+}
+
+function buySkin(s, cost) {
+    if ((s === '🐱' && unlockedCat) || (s === '👾' && unlockedAlien)) {
+        return setSkin(s);
+    }
+    if (coins >= cost) {
+        coins -= cost;
+        if (s === '🐱') unlockedCat = true;
+        if (s === '👾') unlockedAlien = true;
+        localStorage.setItem("doodle_coins", coins);
+        localStorage.setItem("doodle_" + (s === '🐱' ? "cat" : "alien"), "true");
+        setSkin(s);
+        updateUI();
+    }
+}
+
+function resetGame() {
+    player.x = 145;
+    player.y = 300;
+    player.vx = 0;
+    player.vy = player.jumpPower;
+    score = 0;
+    gameOver = false;
+
+    platforms = [];
+    for (let i = 0; i < 7; i++) {
+        platforms.push({ x: Math.random() * 250, y: i * 60 + 40, width: 70, height: 12 });
+    }
+    platforms[6].x = 130;
+    platforms[6].y = 380; // Guaranteed starting platform below player
+
+    coinItems = [];
+    updateUI();
+}
+
+function moveLeft() { player.vx = -4; }
+function moveRight() { player.vx = 4; }
+function stopMove() { player.vx = 0; }
+
+document.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft") moveLeft();
+    if (e.key === "ArrowRight") moveRight();
+});
+document.addEventListener("keyup", e => {
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") stopMove();
+});
+
+function gameLoop() {
+    if (!gameOver) {
+        // Player Physics
+        player.vy += player.gravity;
+        player.x += player.vx;
+        player.y += player.vy;
+
+        // Wrap around screen
+        if (player.x < -20) player.x = canvas.width;
+        if (player.x > canvas.width) player.x = -20;
+
+        // Platform Landing
+        if (player.vy > 0) {
+            platforms.forEach(p => {
+                if (player.x + player.width > p.x &&
+                    player.x < p.x + p.width &&
+                    player.y + player.height >= p.y &&
+                    player.y + player.height <= p.y + p.height + 6) {
+                    player.vy = player.jumpPower;
+                }
+            });
+        }
+
+        // Camera Scroll Up
+        if (player.y < 180) {
+            let diff = 180 - player.y;
+            player.y = 180;
+            score += Math.floor(diff);
+
+            platforms.forEach(p => {
+                p.y += diff;
+                if (p.y > canvas.height) {
+                    p.y = 0;
+                    p.x = Math.random() * (canvas.width - p.width);
+                    if (Math.random() < 0.3) {
+                        coinItems.push({ x: p.x + 25, y: p.y - 20, collected: false });
+                    }
+                }
+            });
+
+            coinItems.forEach(c => c.y += diff);
+
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem("doodle_highScore", highScore);
+            }
+            updateUI();
+        }
+
+        // Coin Collection
+        coinItems.forEach(c => {
+            if (!c.collected && Math.abs(player.x - c.x) < 25 && Math.abs(player.y - c.y) < 25) {
+                c.collected = true;
+                coins += 1;
+                localStorage.setItem("doodle_coins", coins);
+                updateUI();
+            }
+        });
+
+        // Game Over Condition
+        if (player.y > canvas.height) {
+            gameOver = true;
+            setTimeout(() => {
+                alert(`Game Over! Score: ${score}`);
+                resetGame();
+            }, 100);
+        }
+    }
+
+    // Render
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw Platforms
+    ctx.fillStyle = "#4ecca3";
+    platforms.forEach(p => {
+        ctx.fillRect(p.x, p.y, p.width, p.height);
+    });
+
+    // Draw Coins
+    coinItems.forEach(c => {
+        if (!c.collected) {
+            ctx.font = "16px sans-serif";
+            ctx.fillText("🪙", c.x, c.y);
+        }
+    });
+
+    // Draw Player
+    ctx.font = "26px sans-serif";
+    ctx.fillText(currentSkin, player.x, player.y + 24);
+
+    requestAnimationFrame(gameLoop);
+}
+
+resetGame();
+gameLoop();
+</script>
+</body>
+</html>
