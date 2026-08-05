@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Color Catcher DX</title>
+    <style>
+        * { box-sizing: border-box; touch-action: manipulation; }
+        body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; text-align: center; padding: 10px; }
+        .ui { font-size: 16px; margin: 10px; display: flex; justify-content: space-around; max-width: 320px; margin: 10px auto; }
+        canvas { background: #1e293b; border: 3px solid #f43f5e; border-radius: 10px; display: block; margin: 10px auto; }
+        .controls { display: flex; justify-content: center; gap: 10px; max-width: 320px; margin: 10px auto; }
+        .ctrl-btn { flex: 1; padding: 12px; font-size: 18px; font-weight: bold; background: #38bdf8; color: #0f172a; border: none; border-radius: 8px; cursor: pointer; }
+        .ctrl-btn:active { background: #0284c7; color: white; }
+        .shop { background: #1e293b; padding: 10px; max-width: 320px; margin: 10px auto; border-radius: 8px; border: 1px solid #334155; }
+        button.shop-btn { padding: 6px 12px; font-size: 13px; font-weight: bold; background: #10b981; color: white; border: none; border-radius: 5px; margin: 4px; cursor: pointer; }
+        button.shop-btn:disabled { background: #334155; color: #64748b; }
+        a { color: #38bdf8; text-decoration: none; font-size: 16px; display: inline-block; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <h2>🎨 Color Catcher DX</h2>
+    <div class="ui">
+        <div>Score: <span id="score">0</span></div>
+        <div>Coins: $<span id="coins">0</span></div>
+        <div>Best: <span id="highScore">0</span></div>
+    </div>
+
+    <canvas id="gameCanvas" width="300" height="350"></canvas>
+
+    <div class="controls">
+        <button class="ctrl-btn" onclick="moveLeft()">⬅️ Left</button>
+        <button class="ctrl-btn" onclick="switchColor()">🔄 Color</button>
+        <button class="ctrl-btn" onclick="moveRight()">Right ➡️</button>
+    </div>
+
+    <div class="shop">
+        <h3>Bucket Shop</h3>
+        <button class="shop-btn" onclick="setSkin('🪣')">🪣 Bucket</button>
+        <button class="shop-btn" id="starBtn" onclick="buySkin('⭐', 20)">⭐ Star ($20)</button>
+        <button class="shop-btn" id="crownBtn" onclick="buySkin('👑', 40)">👑 Crown ($40)</button>
+    </div>
+
+    <p><a href="index.html">⬅️ Back to Game Hub</a></p>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+const colors = ["#ef4444", "#3b82f6", "#10b981", "#eab308"]; // Red, Blue, Green, Yellow
+
+let score = 0;
+let coins = parseInt(localStorage.getItem("catch_coins")) || 0;
+let highScore = parseInt(localStorage.getItem("catch_highScore")) || 0;
+let currentSkin = localStorage.getItem("catch_skin") || "🪣";
+let unlockedStar = localStorage.getItem("catch_star") === "true";
+let unlockedCrown = localStorage.getItem("catch_crown") === "true";
+
+let player = { x: 125, y: 300, width: 50, height: 35, colorIndex: 0 };
+let drops = [];
+let spawnRate = 90;
+let frameCount = 0;
+let speed = 2.5;
+let gameOver = false;
+
+function updateUI() {
+    document.getElementById("score").innerText = score;
+    document.getElementById("coins").innerText = coins;
+    document.getElementById("highScore").innerText = highScore;
+
+    document.getElementById("starBtn").innerText = unlockedStar ? "⭐ Star" : "⭐ Star ($20)";
+    document.getElementById("starBtn").disabled = !unlockedStar && coins < 20;
+
+    document.getElementById("crownBtn").innerText = unlockedCrown ? "👑 Crown" : "👑 Crown ($40)";
+    document.getElementById("crownBtn").disabled = !unlockedCrown && coins < 40;
+}
+
+function setSkin(s) {
+    if (s === '⭐' && !unlockedStar) return;
+    if (s === '👑' && !unlockedCrown) return;
+    currentSkin = s;
+    localStorage.setItem("catch_skin", s);
+}
+
+function buySkin(s, cost) {
+    if ((s === '⭐' && unlockedStar) || (s === '👑' && unlockedCrown)) {
+        return setSkin(s);
+    }
+    if (coins >= cost) {
+        coins -= cost;
+        if (s === '⭐') unlockedStar = true;
+        if (s === '👑') unlockedCrown = true;
+        localStorage.setItem("catch_coins", coins);
+        localStorage.setItem("catch_" + (s === '⭐' ? "star" : "crown"), "true");
+        setSkin(s);
+        updateUI();
+    }
+}
+
+function moveLeft() { player.x = Math.max(0, player.x - 30); }
+function moveRight() { player.x = Math.min(canvas.width - player.width, player.x + 30); }
+function switchColor() { player.colorIndex = (player.colorIndex + 1) % colors.length; }
+
+document.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft") moveLeft();
+    if (e.key === "ArrowRight") moveRight();
+    if (e.key === " " || e.key === "ArrowUp") switchColor();
+});
+
+function spawnDrop() {
+    let x = Math.random() * (canvas.width - 20) + 10;
+    let colorIdx = Math.floor(Math.random() * colors.length);
+    drops.push({ x: x, y: 0, radius: 10, colorIndex: colorIdx });
+}
+
+function resetGame() {
+    score = 0;
+    speed = 2.5;
+    drops = [];
+    gameOver = false;
+    updateUI();
+}
+
+function update() {
+    if (gameOver) return;
+
+    frameCount++;
+    if (frameCount % Math.max(30, spawnRate - Math.floor(score / 3)) === 0) {
+        spawnDrop();
+    }
+
+    for (let i = drops.length - 1; i >= 0; i--) {
+        let d = drops[i];
+        d.y += speed;
+
+        // Catch Collision Check
+        if (d.y + d.radius >= player.y &&
+            d.x >= player.x - 10 &&
+            d.x <= player.x + player.width + 10) {
+            
+            if (d.colorIndex === player.colorIndex) {
+                score++;
+                coins += 1;
+                speed += 0.05;
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem("catch_highScore", highScore);
+                }
+                localStorage.setItem("catch_coins", coins);
+                updateUI();
+                drops.splice(i, 1);
+            } else {
+                gameOver = true;
+                setTimeout(() => {
+                    alert(`💥 Wrong Color Caught! Final Score: ${score}`);
+                    resetGame();
+                }, 100);
+            }
+            continue;
+        }
+
+        // Missed Drop
+        if (d.y > canvas.height) {
+            gameOver = true;
+            setTimeout(() => {
+                alert(`💥 Drop Missed! Final Score: ${score}`);
+                resetGame();
+            }, 100);
+        }
+    }
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw Drops
+    drops.forEach(d => {
+        ctx.fillStyle = colors[d.colorIndex];
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+    });
+
+    // Draw Player Catcher
+    ctx.fillStyle = colors[player.colorIndex];
+    ctx.fillRect(player.x, player.y + 15, player.width, 15);
+    ctx.font = "24px sans-serif";
+    ctx.fillText(currentSkin, player.x + 12, player.y + 20);
+}
+
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+updateUI();
+loop();
+</script>
+</body>
+</html>
