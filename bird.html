@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Flappy Bird Deluxe</title>
+    <style>
+        * { box-sizing: border-box; touch-action: manipulation; }
+        body { margin: 0; background: #222; color: white; font-family: sans-serif; text-align: center; }
+        canvas { background: #70c5ce; border: 3px solid #fff; display: block; margin: 10px auto; }
+        .ui { font-size: 16px; margin: 10px; }
+        .shop { background: #333; padding: 10px; max-width: 320px; margin: 10px auto; border-radius: 8px; }
+        button { padding: 10px 16px; font-size: 14px; font-weight: bold; background: #FF9800; color: white; border: none; border-radius: 6px; margin: 4px; }
+        button:disabled { background: #555; }
+        .ability-btn { background: #E91E63; width: 100%; padding: 12px; font-size: 16px; margin-top: 5px; }
+        a { color: #4CAF50; text-decoration: none; font-size: 18px; display: inline-block; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <h2>🐤 Flappy Bird Deluxe</h2>
+    <div class="ui">
+        Score: <span id="score">0</span> | Best: <span id="highScore">0</span> | Coins: $<span id="coins">0</span>
+    </div>
+
+    <canvas id="canvas" width="320" height="400"></canvas>
+
+    <button id="abilityBtn" class="ability-btn" onclick="useAbility()">🔥 FIREBALL ABILITY (Ready)</button>
+
+    <div class="shop">
+        <h3>Skin Shop</h3>
+        <button onclick="equipSkin('yellow')">Yellow (Default)</button>
+        <button id="redSkinBtn" onclick="buySkin('red', 20)">Red Firebird ($20)</button>
+    </div>
+
+    <p><a href="index.html">⬅️ Back to Game Hub</a></p>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let bird = { x: 50, y: 150, radius: 12, gravity: 0.35, velocity: 0, jump: -6.5 };
+let pipes = [];
+let fireballs = [];
+let frame = 0;
+let score = 0;
+let coins = parseInt(localStorage.getItem("bird_coins")) || 0;
+let highScore = parseInt(localStorage.getItem("bird_highScore")) || 0;
+let currentSkin = localStorage.getItem("bird_skin") || "yellow";
+let unlockedRed = localStorage.getItem("bird_red_unlocked") === "true";
+
+let cooldown = 0;
+
+function updateUI() {
+    document.getElementById("score").innerText = score;
+    document.getElementById("highScore").innerText = highScore;
+    document.getElementById("coins").innerText = coins;
+    document.getElementById("redSkinBtn").innerText = unlockedRed ? "Equip Red Firebird" : "Red Firebird ($20)";
+}
+updateUI();
+
+function equipSkin(s) {
+    if (s === 'red' && !unlockedRed) return;
+    currentSkin = s;
+    localStorage.setItem("bird_skin", s);
+    alert("Equipped " + s + " skin!");
+}
+
+function buySkin(s, cost) {
+    if (unlockedRed) return equipSkin('red');
+    if (coins >= cost) {
+        coins -= cost;
+        unlockedRed = true;
+        currentSkin = 'red';
+        localStorage.setItem("bird_coins", coins);
+        localStorage.setItem("bird_red_unlocked", "true");
+        localStorage.setItem("bird_skin", "red");
+        updateUI();
+        alert("Red Firebird Unlocked!");
+    } else {
+        alert("Not enough coins!");
+    }
+}
+
+function flap() { bird.velocity = bird.jump; }
+canvas.addEventListener("touchstart", flap);
+canvas.addEventListener("click", flap);
+
+function useAbility() {
+    if (currentSkin === 'red' && cooldown <= 0) {
+        fireballs.push({ x: bird.x, y: bird.y, radius: 10 });
+        cooldown = 300; // ~5 sec cooldown
+    } else if (currentSkin !== 'red') {
+        alert("Equip the Red Firebird skin to use Fireball!");
+    }
+}
+
+function update() {
+    frame++;
+    if (cooldown > 0) cooldown--;
+    document.getElementById("abilityBtn").innerText = cooldown > 0 ? `🔥 Cooldown (${Math.ceil(cooldown/60)}s)` : "🔥 FIREBALL ABILITY (Ready)";
+
+    bird.velocity += bird.gravity;
+    bird.y += bird.velocity;
+
+    if (bird.y + bird.radius > canvas.height || bird.y - bird.radius < 0) reset();
+
+    // Spawn Pipes
+    if (frame % 90 === 0) {
+        let gap = 110;
+        let topHeight = Math.floor(Math.random() * (canvas.height - gap - 100)) + 30;
+        pipes.push({ x: canvas.width, top: topHeight, bottom: topHeight + gap });
+    }
+
+    // Update Fireballs
+    for (let f = fireballs.length - 1; f >= 0; f--) {
+        fireballs[f].x += 6;
+        for (let p = pipes.length - 1; p >= 0; p--) {
+            if (fireballs[f].x > pipes[p].x && fireballs[f].x < pipes[p].x + 40) {
+                pipes.splice(p, 1);
+                fireballs.splice(f, 1);
+                break;
+            }
+        }
+    }
+
+    // Move Pipes
+    for (let i = pipes.length - 1; i >= 0; i--) {
+        pipes[i].x -= 2;
+
+        if (bird.x + bird.radius > pipes[i].x && bird.x - bird.radius < pipes[i].x + 40) {
+            if (bird.y - bird.radius < pipes[i].top || bird.y + bird.radius > pipes[i].bottom) {
+                reset();
+            }
+        }
+
+        if (pipes[i].x === 50) {
+            score++;
+            coins += 1;
+            localStorage.setItem("bird_coins", coins);
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem("bird_highScore", highScore);
+            }
+            updateUI();
+        }
+
+        if (pipes[i].x < -40) pipes.splice(i, 1);
+    }
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw Bird
+    ctx.fillStyle = currentSkin === 'red' ? '#FF5722' : '#FFEB3B';
+    ctx.beginPath();
+    ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw Fireballs
+    ctx.fillStyle = "red";
+    fireballs.forEach(f => {
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // Draw Pipes
+    ctx.fillStyle = "#2e7d32";
+    pipes.forEach(p => {
+        ctx.fillRect(p.x, 0, 40, p.top);
+        ctx.fillRect(p.x, p.bottom, 40, canvas.height - p.bottom);
+    });
+}
+
+function reset() {
+    bird.y = 150;
+    bird.velocity = 0;
+    pipes = [];
+    fireballs = [];
+    score = 0;
+    updateUI();
+}
+
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
