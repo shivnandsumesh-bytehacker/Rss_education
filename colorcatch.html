@@ -1,204 +1,135 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Color Catcher DX</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Catch</title>
+    <script src="arcade.js"></script>
     <style>
-        * { box-sizing: border-box; touch-action: manipulation; }
-        body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; text-align: center; padding: 10px; }
-        .ui { font-size: 16px; margin: 10px; display: flex; justify-content: space-around; max-width: 320px; margin: 10px auto; }
-        canvas { background: #1e293b; border: 3px solid #f43f5e; border-radius: 10px; display: block; margin: 10px auto; }
-        .controls { display: flex; justify-content: center; gap: 10px; max-width: 320px; margin: 10px auto; }
-        .ctrl-btn { flex: 1; padding: 12px; font-size: 18px; font-weight: bold; background: #38bdf8; color: #0f172a; border: none; border-radius: 8px; cursor: pointer; }
-        .ctrl-btn:active { background: #0284c7; color: white; }
-        .shop { background: #1e293b; padding: 10px; max-width: 320px; margin: 10px auto; border-radius: 8px; border: 1px solid #334155; }
-        button.shop-btn { padding: 6px 12px; font-size: 13px; font-weight: bold; background: #10b981; color: white; border: none; border-radius: 5px; margin: 4px; cursor: pointer; }
-        button.shop-btn:disabled { background: #334155; color: #64748b; }
-        a { color: #38bdf8; text-decoration: none; font-size: 16px; display: inline-block; margin-top: 15px; }
+        body { background: #0f172a; color: white; text-align: center; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        canvas { background: #1e293b; border: 2px solid #38bdf8; border-radius: 8px; }
+        .info { margin-bottom: 10px; font-size: 1.2rem; }
+        a { color: #38bdf8; text-decoration: none; margin-top: 15px; display: inline-block; }
     </style>
 </head>
 <body>
+    <div class="info">Score: <span id="score">0</span> | Target Color: <span id="target" style="font-weight: bold;">RED</span></div>
+    <canvas id="game" width="320" height="450"></canvas>
+    <a href="index.html">← Back to Hub</a>
 
-    <h2>🎨 Color Catcher DX</h2>
-    <div class="ui">
-        <div>Score: <span id="score">0</span></div>
-        <div>Coins: $<span id="coins">0</span></div>
-        <div>Best: <span id="highScore">0</span></div>
-    </div>
+    <script>
+        const canvas = document.getElementById("game");
+        const ctx = canvas.getContext("2d");
 
-    <canvas id="gameCanvas" width="300" height="350"></canvas>
+        const COLORS = [
+            { name: "RED", hex: "#ef4444" },
+            { name: "BLUE", hex: "#3b82f6" },
+            { name: "GREEN", hex: "#22c55e" },
+            { name: "YELLOW", hex: "#eab308" }
+        ];
 
-    <div class="controls">
-        <button class="ctrl-btn" onclick="moveLeft()">⬅️ Left</button>
-        <button class="ctrl-btn" onclick="switchColor()">🔄 Color</button>
-        <button class="ctrl-btn" onclick="moveRight()">Right ➡️</button>
-    </div>
+        let bucket = { x: 130, w: 60, h: 20, colorIndex: 0 };
+        let items = [];
+        let score = 0;
+        let frame = 0;
+        let targetColorIndex = 0;
+        let gameOver = false;
 
-    <div class="shop">
-        <h3>Bucket Shop</h3>
-        <button class="shop-btn" onclick="setSkin('🪣')">🪣 Bucket</button>
-        <button class="shop-btn" id="starBtn" onclick="buySkin('⭐', 20)">⭐ Star ($20)</button>
-        <button class="shop-btn" id="crownBtn" onclick="buySkin('👑', 40)">👑 Crown ($40)</button>
-    </div>
+        function setTargetColor() {
+            targetColorIndex = Math.floor(Math.random() * COLORS.length);
+            const targetElem = document.getElementById("target");
+            targetElem.innerText = COLORS[targetColorIndex].name;
+            targetElem.style.color = COLORS[targetColorIndex].hex;
+        }
 
-    <p><a href="index.html">⬅️ Back to Game Hub</a></p>
+        // Move bucket with mouse/touch
+        function moveBucket(e) {
+            let rect = canvas.getBoundingClientRect();
+            let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            bucket.x = clientX - rect.left - bucket.w / 2;
+            if (bucket.x < 0) bucket.x = 0;
+            if (bucket.x + bucket.w > canvas.width) bucket.x = canvas.width - bucket.w;
+        }
 
-<script>
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+        canvas.addEventListener("mousemove", moveBucket);
+        canvas.addEventListener("touchmove", (e) => { e.preventDefault(); moveBucket(e); });
+        canvas.addEventListener("click", () => { if (gameOver) resetGame(); });
 
-const colors = ["#ef4444", "#3b82f6", "#10b981", "#eab308"]; // Red, Blue, Green, Yellow
+        function resetGame() {
+            score = 0;
+            items = [];
+            frame = 0;
+            gameOver = false;
+            document.getElementById("score").innerText = score;
+            setTargetColor();
+            loop();
+        }
 
-let score = 0;
-let coins = parseInt(localStorage.getItem("catch_coins")) || 0;
-let highScore = parseInt(localStorage.getItem("catch_highScore")) || 0;
-let currentSkin = localStorage.getItem("catch_skin") || "🪣";
-let unlockedStar = localStorage.getItem("catch_star") === "true";
-let unlockedCrown = localStorage.getItem("catch_crown") === "true";
+        function loop() {
+            if (gameOver) return;
 
-let player = { x: 125, y: 300, width: 50, height: 35, colorIndex: 0 };
-let drops = [];
-let spawnRate = 90;
-let frameCount = 0;
-let speed = 2.5;
-let gameOver = false;
+            frame++;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-function updateUI() {
-    document.getElementById("score").innerText = score;
-    document.getElementById("coins").innerText = coins;
-    document.getElementById("highScore").innerText = highScore;
+            // Draw Bucket
+            ctx.fillStyle = COLORS[targetColorIndex].hex;
+            ctx.fillRect(bucket.x, canvas.height - bucket.h - 10, bucket.w, bucket.h);
 
-    document.getElementById("starBtn").innerText = unlockedStar ? "⭐ Star" : "⭐ Star ($20)";
-    document.getElementById("starBtn").disabled = !unlockedStar && coins < 20;
-
-    document.getElementById("crownBtn").innerText = unlockedCrown ? "👑 Crown" : "👑 Crown ($40)";
-    document.getElementById("crownBtn").disabled = !unlockedCrown && coins < 40;
-}
-
-function setSkin(s) {
-    if (s === '⭐' && !unlockedStar) return;
-    if (s === '👑' && !unlockedCrown) return;
-    currentSkin = s;
-    localStorage.setItem("catch_skin", s);
-}
-
-function buySkin(s, cost) {
-    if ((s === '⭐' && unlockedStar) || (s === '👑' && unlockedCrown)) {
-        return setSkin(s);
-    }
-    if (coins >= cost) {
-        coins -= cost;
-        if (s === '⭐') unlockedStar = true;
-        if (s === '👑') unlockedCrown = true;
-        localStorage.setItem("catch_coins", coins);
-        localStorage.setItem("catch_" + (s === '⭐' ? "star" : "crown"), "true");
-        setSkin(s);
-        updateUI();
-    }
-}
-
-function moveLeft() { player.x = Math.max(0, player.x - 30); }
-function moveRight() { player.x = Math.min(canvas.width - player.width, player.x + 30); }
-function switchColor() { player.colorIndex = (player.colorIndex + 1) % colors.length; }
-
-document.addEventListener("keydown", e => {
-    if (e.key === "ArrowLeft") moveLeft();
-    if (e.key === "ArrowRight") moveRight();
-    if (e.key === " " || e.key === "ArrowUp") switchColor();
-});
-
-function spawnDrop() {
-    let x = Math.random() * (canvas.width - 20) + 10;
-    let colorIdx = Math.floor(Math.random() * colors.length);
-    drops.push({ x: x, y: 0, radius: 10, colorIndex: colorIdx });
-}
-
-function resetGame() {
-    score = 0;
-    speed = 2.5;
-    drops = [];
-    gameOver = false;
-    updateUI();
-}
-
-function update() {
-    if (gameOver) return;
-
-    frameCount++;
-    if (frameCount % Math.max(30, spawnRate - Math.floor(score / 3)) === 0) {
-        spawnDrop();
-    }
-
-    for (let i = drops.length - 1; i >= 0; i--) {
-        let d = drops[i];
-        d.y += speed;
-
-        // Catch Collision Check
-        if (d.y + d.radius >= player.y &&
-            d.x >= player.x - 10 &&
-            d.x <= player.x + player.width + 10) {
-            
-            if (d.colorIndex === player.colorIndex) {
-                score++;
-                coins += 1;
-                speed += 0.05;
-                if (score > highScore) {
-                    highScore = score;
-                    localStorage.setItem("catch_highScore", highScore);
-                }
-                localStorage.setItem("catch_coins", coins);
-                updateUI();
-                drops.splice(i, 1);
-            } else {
-                gameOver = true;
-                setTimeout(() => {
-                    alert(`💥 Wrong Color Caught! Final Score: ${score}`);
-                    resetGame();
-                }, 100);
+            // Spawn Falling Items
+            if (frame % 45 === 0) {
+                let colorIdx = Math.floor(Math.random() * COLORS.length);
+                items.push({
+                    x: Math.random() * (canvas.width - 20),
+                    y: -20,
+                    size: 20,
+                    colorIndex: colorIdx,
+                    speed: 3 + Math.floor(score / 5)
+                });
             }
-            continue;
+
+            // Update & Draw Items
+            for (let i = 0; i < items.length; i++) {
+                let item = items[i];
+                item.y += item.speed;
+
+                ctx.fillStyle = COLORS[item.colorIndex].hex;
+                ctx.beginPath();
+                ctx.arc(item.x + 10, item.y + 10, 10, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Collision with bucket
+                if (
+                    item.y + item.size >= canvas.height - bucket.h - 10 &&
+                    item.x + item.size >= bucket.x &&
+                    item.x <= bucket.x + bucket.w
+                ) {
+                    if (item.colorIndex === targetColorIndex) {
+                        score++;
+                        document.getElementById("score").innerText = score;
+                        if (window.Arcade && Arcade.addCoins) Arcade.addCoins(1);
+                        setTargetColor();
+                    } else {
+                        gameOver = true;
+                    }
+                    items.splice(i, 1);
+                    i--;
+                }
+            }
+
+            // Clean up offscreen items
+            items = items.filter(item => item.y <= canvas.height);
+
+            if (!gameOver) {
+                requestAnimationFrame(loop);
+            } else {
+                ctx.fillStyle = "white";
+                ctx.font = "18px sans-serif";
+                ctx.fillText("Game Over! Tap to Restart", 50, canvas.height / 2);
+            }
         }
 
-        // Missed Drop
-        if (d.y > canvas.height) {
-            gameOver = true;
-            setTimeout(() => {
-                alert(`💥 Drop Missed! Final Score: ${score}`);
-                resetGame();
-            }, 100);
-        }
-    }
-}
-
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Draw Drops
-    drops.forEach(d => {
-        ctx.fillStyle = colors[d.colorIndex];
-        ctx.beginPath();
-        ctx.arc(d.x, d.y, d.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-    });
-
-    // Draw Player Catcher
-    ctx.fillStyle = colors[player.colorIndex];
-    ctx.fillRect(player.x, player.y + 15, player.width, 15);
-    ctx.font = "24px sans-serif";
-    ctx.fillText(currentSkin, player.x + 12, player.y + 20);
-}
-
-function loop() {
-    update();
-    draw();
-    requestAnimationFrame(loop);
-}
-
-updateUI();
-loop();
-</script>
+        setTargetColor();
+        loop();
+    </script>
 </body>
 </html>
