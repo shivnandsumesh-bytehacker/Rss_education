@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Classic Snake</title>
+    <style>
+        * { box-sizing: border-box; touch-action: manipulation; }
+        body { margin: 0; background: #111; color: white; font-family: sans-serif; text-align: center; }
+        canvas { background: #222; border: 3px solid #fff; display: block; margin: 10px auto; }
+        .ui { font-size: 18px; margin: 10px; }
+        .controls { display: grid; grid-template-columns: repeat(3, 70px); gap: 10px; justify-content: center; margin-top: 10px; }
+        button { padding: 15px; font-size: 18px; font-weight: bold; background: #444; color: white; border: none; border-radius: 8px; }
+        button:active { background: #4CAF50; }
+        a { color: #4CAF50; text-decoration: none; font-size: 18px; display: inline-block; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <h2>🐍 Classic Snake</h2>
+    <div class="ui">Score: <span id="score">0</span> | Best: <span id="highScore">0</span></div>
+    <canvas id="canvas" width="300" height="300"></canvas>
+
+    <!-- TOUCH D-PAD FOR IPAD -->
+    <div class="controls">
+        <div></div><button onclick="setDir('UP')">⬆️</button><div></div>
+        <button onclick="setDir('LEFT')">⬅️</button><button onclick="setDir('DOWN')">⬇️</button><button onclick="setDir('RIGHT')">➡️</button>
+    </div>
+
+    <p><a href="index.html">⬅️ Back to Game Hub</a></p>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const grid = 15;
+let snake = [{x: 150, y: 150}];
+let dir = "RIGHT";
+let food = {x: 60, y: 60};
+let score = 0;
+let highScore = parseInt(localStorage.getItem("snake_highScore")) || 0;
+document.getElementById("highScore").innerText = highScore;
+
+function setDir(d) {
+    if (d === 'UP' && dir !== 'DOWN') dir = 'UP';
+    if (d === 'DOWN' && dir !== 'UP') dir = 'DOWN';
+    if (d === 'LEFT' && dir !== 'RIGHT') dir = 'LEFT';
+    if (d === 'RIGHT' && dir !== 'LEFT') dir = 'RIGHT';
+}
+
+function update() {
+    let head = {...snake[0]};
+    if (dir === 'UP') head.y -= grid;
+    if (dir === 'DOWN') head.y += grid;
+    if (dir === 'LEFT') head.x -= grid;
+    if (dir === 'RIGHT') head.x += grid;
+
+    // Wall Collision Check
+    if (head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height) return reset();
+
+    // Self Collision Check
+    for (let segment of snake) {
+        if (head.x === segment.x && head.y === segment.y) return reset();
+    }
+
+    snake.unshift(head);
+
+    // Eat Food Check
+    if (head.x === food.x && head.y === food.y) {
+        score++;
+        document.getElementById("score").innerText = score;
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem("snake_highScore", highScore);
+            document.getElementById("highScore").innerText = highScore;
+        }
+        food = {
+            x: Math.floor(Math.random() * (canvas.width / grid)) * grid,
+            y: Math.floor(Math.random() * (canvas.height / grid)) * grid
+        };
+    } else {
+        snake.pop();
+    }
+}
+
+function draw() {
+    ctx.fillStyle = "#222";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#4CAF50";
+    snake.forEach(s => ctx.fillRect(s.x, s.y, grid - 1, grid - 1));
+
+    ctx.fillStyle = "#FF5252";
+    ctx.fillRect(food.x, food.y, grid - 1, grid - 1);
+}
+
+function reset() {
+    snake = [{x: 150, y: 150}];
+    dir = "RIGHT";
+    score = 0;
+    document.getElementById("score").innerText = score;
+}
+
+setInterval(() => { update(); draw(); }, 120);
+</script>
+</body>
+</html>
