@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Speed Math Dash</title>
+    <style>
+        * { box-sizing: border-box; touch-action: manipulation; }
+        body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; text-align: center; padding: 10px; }
+        .ui { font-size: 16px; margin: 10px; display: flex; justify-content: space-around; max-width: 320px; margin: 10px auto; }
+        canvas { background: #1e293b; border: 3px solid #38bdf8; border-radius: 10px; display: block; margin: 10px auto; }
+        .answers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-width: 300px; margin: 10px auto; }
+        .ans-btn { padding: 15px; font-size: 20px; font-weight: bold; background: #38bdf8; color: #0f172a; border: none; border-radius: 8px; cursor: pointer; }
+        .ans-btn:active { background: #0284c7; color: white; }
+        a { color: #38bdf8; text-decoration: none; font-size: 16px; display: inline-block; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <h2>⚡ Speed Math Dash</h2>
+    <div class="ui">
+        <div>Score: <span id="score">0</span></div>
+        <div>Coins: $<span id="coins">0</span></div>
+        <div>Best: <span id="highScore">0</span></div>
+    </div>
+
+    <canvas id="gameCanvas" width="300" height="200"></canvas>
+
+    <div class="answers" id="answers">
+        <button class="ans-btn" onclick="checkAnswer(0)">-</button>
+        <button class="ans-btn" onclick="checkAnswer(1)">-</button>
+        <button class="ans-btn" onclick="checkAnswer(2)">-</button>
+        <button class="ans-btn" onclick="checkAnswer(3)">-</button>
+    </div>
+
+    <p><a href="index.html">⬅️ Back to Game Hub</a></p>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let score = 0;
+let coins = parseInt(localStorage.getItem("math_coins")) || 0;
+let highScore = parseInt(localStorage.getItem("math_highScore")) || 0;
+
+let currentProblem = { num1: 0, num2: 0, op: '+', answer: 0 };
+let options = [];
+let problemY = 30;
+let speed = 1.2;
+let gameOver = false;
+
+function updateUI() {
+    document.getElementById("score").innerText = score;
+    document.getElementById("coins").innerText = coins;
+    document.getElementById("highScore").innerText = highScore;
+}
+
+function generateProblem() {
+    let ops = ['+', '-', '×'];
+    let op = ops[Math.floor(Math.random() * ops.length)];
+    let n1, n2, ans;
+
+    if (op === '+') {
+        n1 = Math.floor(Math.random() * 20) + 1;
+        n2 = Math.floor(Math.random() * 20) + 1;
+        ans = n1 + n2;
+    } else if (op === '-') {
+        n1 = Math.floor(Math.random() * 20) + 5;
+        n2 = Math.floor(Math.random() * n1) + 1;
+        ans = n1 - n2;
+    } else {
+        n1 = Math.floor(Math.random() * 9) + 2;
+        n2 = Math.floor(Math.random() * 9) + 2;
+        ans = n1 * n2;
+    }
+
+    currentProblem = { num1: n1, num2: n2, op: op, answer: ans };
+    problemY = 30;
+
+    // Generate 4 multiple choice options
+    let opts = [ans];
+    while (opts.length < 4) {
+        let wrong = ans + (Math.floor(Math.random() * 10) - 5);
+        if (wrong >= 0 && !opts.includes(wrong)) opts.push(wrong);
+    }
+    opts.sort(() => Math.random() - 0.5);
+    options = opts;
+
+    let btns = document.querySelectorAll(".ans-btn");
+    btns.forEach((btn, idx) => {
+        btn.innerText = options[idx];
+    });
+}
+
+function checkAnswer(idx) {
+    if (gameOver) return;
+    if (options[idx] === currentProblem.answer) {
+        score++;
+        coins += 1;
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem("math_highScore", highScore);
+        }
+        localStorage.setItem("math_coins", coins);
+        speed += 0.05;
+        updateUI();
+        generateProblem();
+    } else {
+        triggerGameOver();
+    }
+}
+
+function triggerGameOver() {
+    gameOver = true;
+    setTimeout(() => {
+        alert(`💥 Time's up or Wrong Answer! Score: ${score}`);
+        resetGame();
+    }, 100);
+}
+
+function resetGame() {
+    score = 0;
+    speed = 1.2;
+    gameOver = false;
+    updateUI();
+    generateProblem();
+}
+
+function update() {
+    if (!gameOver) {
+        problemY += speed;
+        if (problemY > canvas.height - 20) {
+            triggerGameOver();
+        }
+    }
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw Equation Falling
+    ctx.fillStyle = "#38bdf8";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    let text = `${currentProblem.num1} ${currentProblem.op} ${currentProblem.num2} = ?`;
+    ctx.fillText(text, canvas.width / 2, problemY);
+
+    // Draw Danger Line at bottom
+    ctx.strokeStyle = "#ef4444";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height - 10);
+    ctx.lineTo(canvas.width, canvas.height - 10);
+    ctx.stroke();
+}
+
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+updateUI();
+generateProblem();
+loop();
+</script>
+</body>
+</html>
