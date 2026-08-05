@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Coin Clicker Empire</title>
+    <style>
+        * { box-sizing: border-box; touch-action: manipulation; }
+        body { margin: 0; background: #1a1a2e; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
+        .coin-btn { width: 160px; height: 160px; border-radius: 50%; background: gold; border: 8px solid #ffcc00; font-size: 60px; cursor: pointer; margin: 20px auto; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 0 #b38f00; }
+        .coin-btn:active { transform: translateY(4px); box-shadow: 0 6px 0 #b38f00; }
+        .stats { font-size: 20px; margin: 15px 0; }
+        .shop { background: #16213e; padding: 15px; border-radius: 10px; max-width: 320px; margin: 0 auto; }
+        button.upgrade { width: 100%; padding: 12px; margin: 8px 0; background: #e94560; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 15px; }
+        a { color: #4ecca3; text-decoration: none; font-size: 18px; display: inline-block; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <h2>🪙 Coin Clicker Empire</h2>
+    <div class="stats">
+        Coins: <span id="coins">0</span><br>
+        <small>Per Click: +<span id="clickPower">1</span> | Auto/sec: +<span id="autoPower">0</span></small>
+    </div>
+
+    <div class="coin-btn" onclick="clickCoin()">🪙</div>
+
+    <div class="shop">
+        <h3>Upgrades</h3>
+        <button class="upgrade" onclick="buyClick()">⚡ Bigger Clicks (Cost: <span id="clickCost">10</span>)</button>
+        <button class="upgrade" onclick="buyAuto()">🤖 Auto-Miner (Cost: <span id="autoCost">50</span>)</button>
+    </div>
+
+    <p><a href="index.html">⬅️ Back to Game Hub</a></p>
+
+<script>
+let coins = parseInt(localStorage.getItem("clicker_coins")) || 0;
+let clickPower = parseInt(localStorage.getItem("clicker_clickPower")) || 1;
+let autoPower = parseInt(localStorage.getItem("clicker_autoPower")) || 0;
+let clickCost = parseInt(localStorage.getItem("clicker_clickCost")) || 10;
+let autoCost = parseInt(localStorage.getItem("clicker_autoCost")) || 50;
+
+function updateUI() {
+    document.getElementById("coins").innerText = coins;
+    document.getElementById("clickPower").innerText = clickPower;
+    document.getElementById("autoPower").innerText = autoPower;
+    document.getElementById("clickCost").innerText = clickCost;
+    document.getElementById("autoCost").innerText = autoCost;
+}
+
+function save() {
+    localStorage.setItem("clicker_coins", coins);
+    localStorage.setItem("clicker_clickPower", clickPower);
+    localStorage.setItem("clicker_autoPower", autoPower);
+    localStorage.setItem("clicker_clickCost", clickCost);
+    localStorage.setItem("clicker_autoCost", autoCost);
+}
+
+function clickCoin() {
+    coins += clickPower;
+    updateUI();
+    save();
+}
+
+function buyClick() {
+    if (coins >= clickCost) {
+        coins -= clickCost;
+        clickPower += 1;
+        clickCost = Math.floor(clickCost * 1.5);
+        updateUI();
+        save();
+    } else {
+        alert("Not enough coins!");
+    }
+}
+
+function buyAuto() {
+    if (coins >= autoCost) {
+        coins -= autoCost;
+        autoPower += 1;
+        autoCost = Math.floor(autoCost * 1.6);
+        updateUI();
+        save();
+    } else {
+        alert("Not enough coins!");
+    }
+}
+
+setInterval(() => {
+    if (autoPower > 0) {
+        coins += autoPower;
+        updateUI();
+        save();
+    }
+}, 1000);
+
+updateUI();
+</script>
+</body>
+</html>
