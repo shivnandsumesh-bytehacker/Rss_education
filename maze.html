@@ -1,271 +1,153 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Maze Crawler DX</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Runner</title>
+    <script src="arcade.js"></script>
     <style>
-        * { box-sizing: border-box; touch-action: manipulation; }
-        body { margin: 0; background: #0d1117; color: white; font-family: sans-serif; text-align: center; padding: 10px; }
-        .ui { font-size: 15px; margin: 5px auto; display: flex; justify-content: space-around; max-width: 320px; }
-        canvas { background: #161b22; border: 3px solid #58a6ff; border-radius: 8px; display: block; margin: 10px auto; }
-        .controls { display: grid; grid-template-columns: repeat(3, 50px); gap: 5px; justify-content: center; margin-top: 10px; }
-        .ctrl-btn { width: 50px; height: 50px; font-size: 20px; background: #21262d; color: white; border: 1px solid #30363d; border-radius: 6px; font-weight: bold; }
-        .shop { background: #161b22; padding: 10px; max-width: 320px; margin: 10px auto; border-radius: 8px; border: 1px solid #30363d; }
-        button.shop-btn { padding: 6px 12px; font-size: 13px; font-weight: bold; background: #238636; color: white; border: none; border-radius: 5px; margin: 4px; cursor: pointer; }
-        button.shop-btn:disabled { background: #30363d; color: #8b949e; }
-        a { color: #58a6ff; text-decoration: none; font-size: 16px; display: inline-block; margin-top: 10px; }
+        body { background: #0f172a; color: white; text-align: center; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        canvas { background: #1e293b; border: 2px solid #38bdf8; border-radius: 8px; }
+        .info { margin-bottom: 10px; font-size: 1.2rem; }
+        .controls { display: grid; grid-template-columns: repeat(3, 50px); gap: 5px; margin-top: 10px; }
+        .controls button { width: 50px; height: 50px; font-size: 1.2rem; background: #334155; color: white; border: 1px solid #38bdf8; border-radius: 6px; }
+        a { color: #38bdf8; text-decoration: none; margin-top: 15px; display: inline-block; }
     </style>
 </head>
 <body>
-
-    <h2>🏰 Maze Crawler DX</h2>
-    <div class="ui">
-        <div>Level: <span id="level">1</span></div>
-        <div>Coins: $<span id="coins">0</span></div>
-        <div>Weapon: Lvl <span id="weaponLvl">1</span></div>
-    </div>
-
-    <canvas id="gameCanvas" width="300" height="300"></canvas>
-
+    <div class="info">Mazes Cleared: <span id="score">0</span></div>
+    <canvas id="game" width="300" height="300"></canvas>
     <div class="controls">
-        <div></div>
-        <button class="ctrl-btn" onclick="movePlayer(0, -1)">⬆️</button>
-        <div></div>
-        <button class="ctrl-btn" onclick="movePlayer(-1, 0)">⬅️</button>
-        <button class="ctrl-btn" onclick="movePlayer(0, 1)">⬇️</button>
-        <button class="ctrl-btn" onclick="movePlayer(1, 0)">➡️</button>
+        <div></div><button onclick="movePlayer(0,-1)">▲</button><div></div>
+        <button onclick="movePlayer(-1,0)">◄</button><button onclick="movePlayer(0,1)">▼</button><button onclick="movePlayer(1,0)">►</button>
     </div>
+    <a href="index.html">← Back to Hub</a>
 
-    <div class="shop">
-        <h3>Armory Shop</h3>
-        <button class="shop-btn" id="weaponBtn" onclick="upgradeWeapon()">Upgrade Weapon ($15)</button>
-    </div>
+    <script>
+        const canvas = document.getElementById("game");
+        const ctx = canvas.getContext("2d");
 
-    <p><a href="index.html">⬅️ Back to Game Hub</a></p>
+        const cols = 10, rows = 10;
+        const size = 30;
+        let grid = [];
+        let player = { x: 0, y: 0 };
+        let goal = { x: cols - 1, y: rows - 1 };
+        let score = 0;
 
-<script>
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-
-const cols = 15;
-const rows = 15;
-const cellSize = canvas.width / cols;
-
-let grid = [];
-let player = { x: 0, y: 0, hp: 100 };
-let exit = { x: cols - 1, y: rows - 1 };
-let monsters = [];
-let coinPickups = [];
-
-let level = 1;
-let coins = parseInt(localStorage.getItem("maze_coins")) || 0;
-let weaponLvl = parseInt(localStorage.getItem("maze_weapon")) || 1;
-
-function updateUI() {
-    document.getElementById("level").innerText = level;
-    document.getElementById("coins").innerText = coins;
-    document.getElementById("weaponLvl").innerText = weaponLvl;
-    const cost = weaponLvl * 15;
-    const btn = document.getElementById("weaponBtn");
-    btn.innerText = `Upgrade Sword Lvl ${weaponLvl + 1} ($${cost})`;
-    btn.disabled = coins < cost;
-}
-
-function upgradeWeapon() {
-    const cost = weaponLvl * 15;
-    if (coins >= cost) {
-        coins -= cost;
-        weaponLvl++;
-        localStorage.setItem("maze_coins", coins);
-        localStorage.setItem("maze_weapon", weaponLvl);
-        updateUI();
-    }
-}
-
-class Cell {
-    constructor(r, c) {
-        this.r = r;
-        this.c = c;
-        this.walls = [true, true, true, true]; // Top, Right, Bottom, Left
-        this.visited = false;
-    }
-}
-
-function generateMaze() {
-    grid = [];
-    for (let r = 0; r < rows; r++) {
-        let row = [];
-        for (let c = 0; c < cols; c++) {
-            row.push(new Cell(r, c));
-        }
-        grid.push(row);
-    }
-
-    let stack = [];
-    let current = grid[0][0];
-    current.visited = true;
-
-    while (true) {
-        let neighbors = [];
-        let { r, c } = current;
-
-        if (r > 0 && !grid[r - 1][c].visited) neighbors.push({ cell: grid[r - 1][c], dir: 0 });
-        if (c < cols - 1 && !grid[r][c + 1].visited) neighbors.push({ cell: grid[r][c + 1], dir: 1 });
-        if (r < rows - 1 && !grid[r + 1][c].visited) neighbors.push({ cell: grid[r + 1][c], dir: 2 });
-        if (c > 0 && !grid[r][c - 1].visited) neighbors.push({ cell: grid[r][c - 1], dir: 3 });
-
-        if (neighbors.length > 0) {
-            let next = neighbors[Math.floor(Math.random() * neighbors.length)];
-            current.walls[next.dir] = false;
-            next.cell.walls[(next.dir + 2) % 4] = false;
-
-            stack.push(current);
-            current = next.cell;
-            current.visited = true;
-        } else if (stack.length > 0) {
-            current = stack.pop();
-        } else {
-            break;
-        }
-    }
-}
-
-function spawnEntities() {
-    monsters = [];
-    coinPickups = [];
-
-    const numMonsters = Math.min(2 + Math.floor(level / 2), 6);
-    const numCoins = 3 + Math.floor(Math.random() * 3);
-
-    for (let i = 0; i < numMonsters; i++) {
-        let mx = Math.floor(Math.random() * (cols - 3)) + 2;
-        let my = Math.floor(Math.random() * (rows - 3)) + 2;
-        monsters.push({ x: mx, y: my, hp: 2 + level });
-    }
-
-    for (let i = 0; i < numCoins; i++) {
-        let cx = Math.floor(Math.random() * cols);
-        let cy = Math.floor(Math.random() * rows);
-        if ((cx !== 0 || cy !== 0) && (cx !== exit.x || cy !== exit.y)) {
-            coinPickups.push({ x: cx, y: cy, collected: false });
-        }
-    }
-}
-
-function initLevel() {
-    player.x = 0;
-    player.y = 0;
-    generateMaze();
-    spawnEntities();
-    updateUI();
-    draw();
-}
-
-function movePlayer(dx, dy) {
-    let cell = grid[player.y][player.x];
-    let nx = player.x + dx;
-    let ny = player.y + dy;
-
-    if (dx === 0 && dy === -1 && cell.walls[0]) return;
-    if (dx === 1 && dy === 0 && cell.walls[1]) return;
-    if (dx === 0 && dy === 1 && cell.walls[2]) return;
-    if (dx === -1 && dy === 0 && cell.walls[3]) return;
-
-    if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) {
-        player.x = nx;
-        player.y = ny;
-
-        // Check Coin Collection
-        coinPickups.forEach(c => {
-            if (!c.collected && c.x === player.x && c.y === player.y) {
-                c.collected = true;
-                coins += 3;
-                localStorage.setItem("maze_coins", coins);
-                updateUI();
+        class Cell {
+            constructor(r, c) {
+                this.r = r;
+                this.c = c;
+                this.walls = [true, true, true, true]; // Top, Right, Bottom, Left
+                this.visited = false;
             }
-        });
+        }
 
-        // Check Monster Encounters
-        monsters.forEach((m, idx) => {
-            if (m.hp > 0 && m.x === player.x && m.y === player.y) {
-                m.hp -= weaponLvl * 2;
-                if (m.hp <= 0) {
-                    coins += 5;
-                    localStorage.setItem("maze_coins", coins);
-                } else {
-                    alert("👾 Encountered a Monster! You attacked and ran back.");
-                    player.x -= dx;
-                    player.y -= dy;
+        function generateMaze() {
+            grid = [];
+            for (let r = 0; r < rows; r++) {
+                let row = [];
+                for (let c = 0; c < cols; c++) {
+                    row.push(new Cell(r, c));
                 }
-                updateUI();
+                grid.push(row);
             }
+
+            let stack = [];
+            let current = grid[0][0];
+            current.visited = true;
+
+            do {
+                let neighbors = getUnvisitedNeighbors(current);
+                if (neighbors.length > 0) {
+                    let next = neighbors[Math.floor(Math.random() * neighbors.length)];
+                    removeWalls(current, next);
+                    stack.push(current);
+                    current = next;
+                    current.visited = true;
+                } else if (stack.length > 0) {
+                    current = stack.pop();
+                }
+            } while (stack.length > 0);
+
+            player = { x: 0, y: 0 };
+            draw();
+        }
+
+        function getUnvisitedNeighbors(cell) {
+            let neighbors = [];
+            let { r, c } = cell;
+
+            if (r > 0 && !grid[r - 1][c].visited) neighbors.push(grid[r - 1][c]);
+            if (c < cols - 1 && !grid[r][c + 1].visited) neighbors.push(grid[r][c + 1]);
+            if (r < rows - 1 && !grid[r + 1][c].visited) neighbors.push(grid[r + 1][c]);
+            if (c > 0 && !grid[r][c - 1].visited) neighbors.push(grid[r][c - 1]);
+
+            return neighbors;
+        }
+
+        function removeWalls(a, b) {
+            let x = a.c - b.c;
+            if (x === 1) { a.walls[3] = false; b.walls[1] = false; }
+            else if (x === -1) { a.walls[1] = false; b.walls[3] = false; }
+
+            let y = a.r - b.r;
+            if (y === 1) { a.walls[0] = false; b.walls[2] = false; }
+            else if (y === -1) { a.walls[2] = false; b.walls[0] = false; }
+        }
+
+        function movePlayer(dx, dy) {
+            let current = grid[player.y][player.x];
+            if (dx === 0 && dy === -1 && !current.walls[0]) player.y--;
+            if (dx === 1 && dy === 0 && !current.walls[1]) player.x++;
+            if (dx === 0 && dy === 1 && !current.walls[2]) player.y++;
+            if (dx === -1 && dy === 0 && !current.walls[3]) player.x--;
+
+            if (player.x === goal.x && player.y === goal.y) {
+                score++;
+                document.getElementById("score").innerText = score;
+                if (window.Arcade && Arcade.addCoins) Arcade.addCoins(5);
+                generateMaze();
+            } else {
+                draw();
+            }
+        }
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowUp" || e.key === "w") movePlayer(0, -1);
+            if (e.key === "ArrowRight" || e.key === "d") movePlayer(1, 0);
+            if (e.key === "ArrowDown" || e.key === "s") movePlayer(0, 1);
+            if (e.key === "ArrowLeft" || e.key === "a") movePlayer(-1, 0);
         });
 
-        // Check Exit Reach
-        if (player.x === exit.x && player.y === exit.y) {
-            level++;
-            coins += 10;
-            localStorage.setItem("maze_coins", coins);
-            alert(`🎉 Level Cleared! Advancing to Level ${level}`);
-            initLevel();
-            return;
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = "#38bdf8";
+            ctx.lineWidth = 2;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    let x = c * size;
+                    let y = r * size;
+                    let cell = grid[r][c];
+
+                    if (cell.walls[0]) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + size, y); ctx.stroke(); }
+                    if (cell.walls[1]) { ctx.beginPath(); ctx.moveTo(x + size, y); ctx.lineTo(x + size, y + size); ctx.stroke(); }
+                    if (cell.walls[2]) { ctx.beginPath(); ctx.moveTo(x + size, y + size); ctx.lineTo(x, y + size); ctx.stroke(); }
+                    if (cell.walls[3]) { ctx.beginPath(); ctx.moveTo(x, y + size); ctx.lineTo(x, y); ctx.stroke(); }
+                }
+            }
+
+            // Draw Goal
+            ctx.fillStyle = "#22c55e";
+            ctx.fillRect(goal.x * size + 4, goal.y * size + 4, size - 8, size - 8);
+
+            // Draw Player
+            ctx.fillStyle = "#ef4444";
+            ctx.fillRect(player.x * size + 6, player.y * size + 6, size - 12, size - 12);
         }
 
-        draw();
-    }
-}
-
-document.addEventListener("keydown", e => {
-    if (e.key === "ArrowUp") movePlayer(0, -1);
-    if (e.key === "ArrowRight") movePlayer(1, 0);
-    if (e.key === "ArrowDown") movePlayer(0, 1);
-    if (e.key === "ArrowLeft") movePlayer(-1, 0);
-});
-
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Draw Walls
-    ctx.strokeStyle = "#58a6ff";
-    ctx.lineWidth = 2;
-
-    for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-            let x = c * cellSize;
-            let y = r * cellSize;
-            let cell = grid[r][c];
-
-            if (cell.walls[0]) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + cellSize, y); ctx.stroke(); }
-            if (cell.walls[1]) { ctx.beginPath(); ctx.moveTo(x + cellSize, y); ctx.lineTo(x + cellSize, y + cellSize); ctx.stroke(); }
-            if (cell.walls[2]) { ctx.beginPath(); ctx.moveTo(x + cellSize, y + cellSize); ctx.lineTo(x, y + cellSize); ctx.stroke(); }
-            if (cell.walls[3]) { ctx.beginPath(); ctx.moveTo(x, y + cellSize); ctx.lineTo(x, y); ctx.stroke(); }
-        }
-    }
-
-    // Draw Exit
-    ctx.fillStyle = "#238636";
-    ctx.fillRect(exit.x * cellSize + 4, exit.y * cellSize + 4, cellSize - 8, cellSize - 8);
-
-    // Draw Coins
-    ctx.font = "12px sans-serif";
-    coinPickups.forEach(c => {
-        if (!c.collected) {
-            ctx.fillText("🪙", c.x * cellSize + 2, c.y * cellSize + 15);
-        }
-    });
-
-    // Draw Monsters
-    monsters.forEach(m => {
-        if (m.hp > 0) {
-            ctx.fillText("👾", m.x * cellSize + 2, m.y * cellSize + 15);
-        }
-    });
-
-    // Draw Player
-    ctx.fillText("🧙‍♂️", player.x * cellSize + 2, player.y * cellSize + 15);
-}
-
-initLevel();
-</script>
+        generateMaze();
+    </script>
 </body>
 </html>
