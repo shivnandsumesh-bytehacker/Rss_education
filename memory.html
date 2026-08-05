@@ -1,164 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Memory Match Deluxe</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Match</title>
+    <script src="arcade.js"></script>
     <style>
-        * { box-sizing: border-box; touch-action: manipulation; }
-        body { margin: 0; background: #181824; color: white; font-family: sans-serif; text-align: center; padding: 10px; }
-        .ui { font-size: 16px; margin: 10px; display: flex; justify-content: space-around; max-width: 320px; margin: 5px auto; }
-        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; max-width: 320px; margin: 15px auto; }
-        .card { width: 70px; height: 70px; background: #2a2a40; border: 2px solid #555; border-radius: 10px; font-size: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; }
-        .card.flipped { background: #3d3d60; border-color: #00BCD4; }
-        .shop { background: #222235; padding: 10px; max-width: 320px; margin: 10px auto; border-radius: 8px; border: 1px solid #444; }
-        button { padding: 8px 12px; font-size: 13px; font-weight: bold; background: #00BCD4; color: #000; border: none; border-radius: 5px; margin: 3px; cursor: pointer; }
-        button:disabled { background: #444; color: #888; }
-        a { color: #00BCD4; text-decoration: none; font-size: 16px; display: inline-block; margin-top: 10px; }
+        body { background: #0f172a; color: white; text-align: center; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .grid { display: grid; grid-template-columns: repeat(4, 70px); gap: 10px; background: #1e293b; padding: 15px; border-radius: 8px; border: 2px solid #38bdf8; }
+        .card { width: 70px; height: 70px; background: #334155; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; cursor: pointer; user-select: none; transition: transform 0.2s; }
+        .card.flipped { background: #0284c7; }
+        .card.matched { background: #22c55e; cursor: default; }
+        .info { margin-bottom: 15px; font-size: 1.2rem; }
+        a { color: #38bdf8; text-decoration: none; margin-top: 15px; display: inline-block; }
     </style>
 </head>
 <body>
-
-    <h2>🃏 Memory Match</h2>
-    <div class="ui">
-        <div>Moves: <span id="moves">0</span></div>
-        <div>Coins: $<span id="coins">0</span></div>
-        <div>Best: <span id="highScore">--</span></div>
-    </div>
-
+    <div class="info">Matches: <span id="matches">0</span> / 8</div>
     <div class="grid" id="grid"></div>
+    <a href="index.html">← Back to Hub</a>
 
-    <div class="shop">
-        <h3>Theme Shop</h3>
-        <button onclick="setTheme('animals')">🐶 Animals</button>
-        <button id="sportsBtn" onclick="buyTheme('sports', 15)">⚽ Sports ($15)</button>
-        <button id="spaceBtn" onclick="buyTheme('space', 30)">🚀 Space ($30)</button>
-    </div>
+    <script>
+        const symbols = ['🍎', '🍌', '🍒', '🍇', '🍉', '🍓', '🍍', '🥝'];
+        let cards = [...symbols, ...symbols];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let lockBoard = false;
 
-    <p><a href="index.html">⬅️ Back to Game Hub</a></p>
-
-<script>
-const themes = {
-    animals: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼'],
-    sports: ['⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏉', '🎱'],
-    space: ['🚀', '🛸', '🌕', '🪐', '⭐', '👾', '👨‍🚀', '☄️']
-};
-
-let coins = parseInt(localStorage.getItem("mem_coins")) || 0;
-let highScore = parseInt(localStorage.getItem("mem_highScore")) || 999;
-let currentTheme = localStorage.getItem("mem_theme") || "animals";
-let unlockedSports = localStorage.getItem("mem_sports") === "true";
-let unlockedSpace = localStorage.getItem("mem_space") === "true";
-
-let cards = [];
-let flippedCards = [];
-let matchedPairs = 0;
-let moves = 0;
-let lockBoard = false;
-
-function updateUI() {
-    document.getElementById("coins").innerText = coins;
-    document.getElementById("highScore").innerText = highScore === 999 ? "--" : highScore;
-    document.getElementById("moves").innerText = moves;
-
-    document.getElementById("sportsBtn").innerText = unlockedSports ? "⚽ Sports" : "⚽ Sports ($15)";
-    document.getElementById("sportsBtn").disabled = !unlockedSports && coins < 15;
-
-    document.getElementById("spaceBtn").innerText = unlockedSpace ? "🚀 Space" : "🚀 Space ($30)";
-    document.getElementById("spaceBtn").disabled = !unlockedSpace && coins < 30;
-}
-
-function setTheme(t) {
-    if (t === 'sports' && !unlockedSports) return;
-    if (t === 'space' && !unlockedSpace) return;
-    currentTheme = t;
-    localStorage.setItem("mem_theme", t);
-    initGame();
-}
-
-function buyTheme(t, cost) {
-    if ((t === 'sports' && unlockedSports) || (t === 'space' && unlockedSpace)) {
-        return setTheme(t);
-    }
-    if (coins >= cost) {
-        coins -= cost;
-        if (t === 'sports') unlockedSports = true;
-        if (t === 'space') unlockedSpace = true;
-        localStorage.setItem("mem_coins", coins);
-        localStorage.setItem("mem_" + t, "true");
-        setTheme(t);
-    }
-}
-
-function initGame() {
-    moves = 0;
-    matchedPairs = 0;
-    flippedCards = [];
-    lockBoard = false;
-    updateUI();
-
-    let icons = [...themes[currentTheme], ...themes[currentTheme]];
-    icons.sort(() => Math.random() - 0.5);
-
-    const grid = document.getElementById("grid");
-    grid.innerHTML = "";
-
-    cards = icons.map((icon, index) => {
-        const card = document.createElement("div");
-        card.classList.add("card");
-        card.dataset.icon = icon;
-        card.dataset.index = index;
-        card.innerText = "❓";
-        card.addEventListener("click", () => flipCard(card));
-        grid.appendChild(card);
-        return card;
-    });
-}
-
-function flipCard(card) {
-    if (lockBoard || card.classList.contains("flipped") || flippedCards.includes(card)) return;
-
-    card.classList.add("flipped");
-    card.innerText = card.dataset.icon;
-    flippedCards.push(card);
-
-    if (flippedCards.length === 2) {
-        moves++;
-        updateUI();
-        checkMatch();
-    }
-}
-
-function checkMatch() {
-    const [c1, c2] = flippedCards;
-    if (c1.dataset.icon === c2.dataset.icon) {
-        matchedPairs++;
-        flippedCards = [];
-        if (matchedPairs === 8) {
-            coins += 10;
-            localStorage.setItem("mem_coins", coins);
-            if (moves < highScore) {
-                highScore = moves;
-                localStorage.setItem("mem_highScore", highScore);
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
             }
-            setTimeout(() => {
-                alert(`🎉 You Won in ${moves} moves! Earned 10 coins.`);
-                initGame();
-            }, 300);
         }
-    } else {
-        lockBoard = true;
-        setTimeout(() => {
-            c1.classList.remove("flipped");
-            c2.classList.remove("flipped");
-            c1.innerText = "❓";
-            c2.innerText = "❓";
-            flippedCards = [];
-            lockBoard = false;
-        }, 800);
-    }
-}
 
-initGame();
-</script>
+        function createBoard() {
+            const grid = document.getElementById("grid");
+            grid.innerHTML = "";
+            shuffle(cards);
+            matchedPairs = 0;
+            document.getElementById("matches").innerText = matchedPairs;
+
+            cards.forEach((symbol, index) => {
+                const card = document.createElement("div");
+                card.className = "card";
+                card.dataset.symbol = symbol;
+                card.dataset.index = index;
+                card.onclick = () => flipCard(card);
+                grid.appendChild(card);
+            });
+        }
+
+        function flipCard(card) {
+            if (lockBoard || card.classList.contains("flipped") || card.classList.contains("matched")) return;
+
+            card.classList.add("flipped");
+            card.innerText = card.dataset.symbol;
+            flippedCards.push(card);
+
+            if (flippedCards.length === 2) {
+                checkMatch();
+            }
+        }
+
+        function checkMatch() {
+            lockBoard = true;
+            const [card1, card2] = flippedCards;
+
+            if (card1.dataset.symbol === card2.dataset.symbol) {
+                card1.classList.add("matched");
+                card2.classList.add("matched");
+                matchedPairs++;
+                document.getElementById("matches").innerText = matchedPairs;
+
+                if (window.Arcade && Arcade.addCoins) Arcade.addCoins(2);
+
+                flippedCards = [];
+                lockBoard = false;
+
+                if (matchedPairs === symbols.length) {
+                    setTimeout(() => {
+                        if (window.Arcade && Arcade.addCoins) Arcade.addCoins(5);
+                        alert("Congratulations! You cleared the board!");
+                        createBoard();
+                    }, 300);
+                }
+            } else {
+                setTimeout(() => {
+                    card1.classList.remove("flipped");
+                    card2.classList.remove("flipped");
+                    card1.innerText = "";
+                    card2.innerText = "";
+                    flippedCards = [];
+                    lockBoard = false;
+                }, 800);
+            }
+        }
+
+        createBoard();
+    </script>
 </body>
 </html>
