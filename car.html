@@ -1,123 +1,123 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Car Runner</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Car Dodger</title>
+    <script src="arcade.js"></script>
     <style>
-        * { box-sizing: border-box; touch-action: manipulation; }
-        body { margin: 0; background: #222; color: white; font-family: sans-serif; text-align: center; }
-        canvas { background: #333; border: 2px solid #fff; display: block; margin: 10px auto; }
-        .ui { font-size: 16px; margin: 10px; }
-        .controls { display: flex; justify-content: center; gap: 20px; margin-top: 10px; }
-        button { padding: 15px 30px; font-size: 18px; font-weight: bold; background: #4CAF50; color: white; border: none; border-radius: 8px; }
-        .shop { margin-top: 15px; }
-        .shop-btn { background: #FF9800; padding: 10px 20px; font-size: 14px; }
-        a { color: #00BCD4; text-decoration: none; font-size: 18px; display: inline-block; margin-top: 15px; }
+        body { background: #0f172a; color: white; text-align: center; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        canvas { background: #334155; border: 2px solid #38bdf8; border-radius: 8px; }
+        .info { margin-bottom: 10px; font-size: 1.2rem; }
+        a { color: #38bdf8; text-decoration: none; margin-top: 15px; display: inline-block; }
     </style>
 </head>
 <body>
+    <div class="info">Score: <span id="score">0</span></div>
+    <canvas id="game" width="300" height="450"></canvas>
+    <a href="index.html">← Back to Hub</a>
 
-    <h2>🚗 Car Upgrade Runner</h2>
-    <div class="ui">
-        Coins: <span id="coins">0</span> | Best: <span id="highScore">0</span>m
-    </div>
-    <canvas id="canvas" width="300" height="350"></canvas>
+    <script>
+        const canvas = document.getElementById("game");
+        const ctx = canvas.getContext("2d");
 
-    <div class="controls">
-        <button onclick="moveLeft()">⬅️ Left</button>
-        <button onclick="moveRight()">Right ➡️</button>
-    </div>
+        let player = { x: 130, y: 380, w: 40, h: 60, speed: 5 };
+        let obstacles = [];
+        let score = 0;
+        let frame = 0;
+        let gameOver = false;
+        let keys = {};
 
-    <div class="shop">
-        <button class="shop-btn" onclick="buySpeed()">⚡ Buy Speed (+1) - 10 Coins</button>
-    </div>
+        document.addEventListener("keydown", (e) => { keys[e.key] = true; if (gameOver) resetGame(); });
+        document.addEventListener("keyup", (e) => { keys[e.key] = false; });
 
-    <p><a href="index.html">⬅️ Back to Game Hub</a></p>
+        // Touch controls for mobile
+        canvas.addEventListener("touchstart", (e) => {
+            if (gameOver) { resetGame(); return; }
+            let touchX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
+            if (touchX < canvas.width / 2) player.x -= 30;
+            else player.x += 30;
+        });
 
-<script>
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-
-let car = { x: 130, y: 280, width: 40, height: 60, speed: 5 };
-let obstacles = [];
-let coins = parseInt(localStorage.getItem("car_coins")) || 0;
-let highScore = parseInt(localStorage.getItem("car_highScore")) || 0;
-let score = 0;
-let speedLevel = parseInt(localStorage.getItem("car_speedLevel")) || 1;
-
-document.getElementById("coins").innerText = coins;
-document.getElementById("highScore").innerText = highScore;
-
-function moveLeft() { if (car.x > 10) car.x -= 40; }
-function moveRight() { if (car.x < 250) car.x += 40; }
-
-function buySpeed() {
-    if (coins >= 10) {
-        coins -= 10;
-        car.speed += 1;
-        speedLevel++;
-        localStorage.setItem("car_coins", coins);
-        localStorage.setItem("car_speedLevel", speedLevel);
-        document.getElementById("coins").innerText = coins;
-        alert("Speed Upgraded!");
-    } else {
-        alert("Not enough coins!");
-    }
-}
-
-function update() {
-    score++;
-    if (score > highScore) {
-        highScore = score;
-        localStorage.setItem("car_highScore", highScore);
-        document.getElementById("highScore").innerText = highScore;
-    }
-
-    if (Math.random() < 0.03) {
-        obstacles.push({ x: Math.floor(Math.random() * 6) * 45 + 10, y: -60, width: 35, height: 50 });
-    }
-
-    for (let i = obstacles.length - 1; i >= 0; i--) {
-        obstacles[i].y += car.speed;
-
-        // Collision check
-        if (car.x < obstacles[i].x + obstacles[i].width &&
-            car.x + car.width > obstacles[i].x &&
-            car.y < obstacles[i].y + obstacles[i].height &&
-            car.y + car.height > obstacles[i].y) {
-            
-            coins += Math.floor(score / 10);
-            localStorage.setItem("car_coins", coins);
-            document.getElementById("coins").innerText = coins;
-            alert("Crash! You earned " + Math.floor(score / 10) + " coins.");
-            score = 0;
+        function resetGame() {
+            player.x = 130;
             obstacles = [];
-            car.x = 130;
+            score = 0;
+            frame = 0;
+            gameOver = false;
+            document.getElementById("score").innerText = score;
+            loop();
         }
 
-        if (obstacles[i].y > canvas.height) obstacles.splice(i, 1);
-    }
-}
+        function loop() {
+            if (gameOver) return;
 
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+            frame++;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Player Car
-    ctx.fillStyle = "#00BCD4";
-    ctx.fillRect(car.x, car.y, car.width, car.height);
+            // Controls
+            if ((keys["ArrowLeft"] || keys["a"]) && player.x > 0) player.x -= player.speed;
+            if ((keys["ArrowRight"] || keys["d"]) && player.x + player.w < canvas.width) player.x += player.speed;
 
-    // Obstacles
-    ctx.fillStyle = "#FF5252";
-    obstacles.forEach(o => ctx.fillRect(o.x, o.y, o.width, o.height));
-}
+            // Draw Road Lines
+            ctx.strokeStyle = "#ffffff";
+            ctx.setLineDash([20, 20]);
+            ctx.beginPath();
+            ctx.moveTo(150, (frame * 4) % 40 - 40);
+            ctx.lineTo(150, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
 
-function loop() {
-    update();
-    draw();
-    requestAnimationFrame(loop);
-}
+            // Draw Player Car
+            ctx.fillStyle = "#38bdf8";
+            ctx.fillRect(player.x, player.y, player.w, player.h);
 
-loop();
-</script>
+            // Spawn Obstacles
+            if (frame % 60 === 0) {
+                let obsX = Math.random() * (canvas.width - 40);
+                obstacles.push({ x: obsX, y: -60, w: 40, h: 60, speed: 3 + Math.floor(score / 5) });
+            }
+
+            // Move and draw obstacles
+            ctx.fillStyle = "#ef4444";
+            for (let i = 0; i < obstacles.length; i++) {
+                let obs = obstacles[i];
+                obs.y += obs.speed;
+
+                ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+
+                // Collision Check
+                if (
+                    player.x < obs.x + obs.w &&
+                    player.x + player.w > obs.x &&
+                    player.y < obs.y + obs.h &&
+                    player.y + player.h > obs.y
+                ) {
+                    gameOver = true;
+                }
+
+                // Dodged obstacle & award coin
+                if (obs.y > canvas.height && !obs.passed) {
+                    obs.passed = true;
+                    score++;
+                    document.getElementById("score").innerText = score;
+                    if (window.Arcade && Arcade.addCoins) Arcade.addCoins(1);
+                }
+            }
+
+            // Clean up off-screen obstacles
+            obstacles = obstacles.filter(obs => obs.y <= canvas.height + 60);
+
+            if (!gameOver) {
+                requestAnimationFrame(loop);
+            } else {
+                ctx.fillStyle = "white";
+                ctx.font = "18px sans-serif";
+                ctx.fillText("Game Over! Press Key to Restart", 20, canvas.height / 2);
+            }
+        }
+
+        loop();
+    </script>
 </body>
 </html>
