@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Space Shooter DX</title>
+    <style>
+        * { box-sizing: border-box; touch-action: manipulation; }
+        body { margin: 0; background: #050510; color: white; font-family: sans-serif; text-align: center; }
+        canvas { background: #000; border: 2px solid #00f0ff; display: block; margin: 10px auto; box-shadow: 0 0 15px rgba(0, 240, 255, 0.3); }
+        .ui { font-size: 15px; margin: 8px; display: flex; justify-content: space-around; max-width: 320px; margin: 5px auto; }
+        .shop { background: #101528; padding: 10px; max-width: 320px; margin: 8px auto; border-radius: 8px; border: 1px solid #00f0ff; }
+        button { padding: 8px 12px; font-size: 13px; font-weight: bold; background: #00f0ff; color: #000; border: none; border-radius: 5px; margin: 3px; cursor: pointer; }
+        button:disabled { background: #444; color: #888; }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 5px; }
+        .ctrl-btn { width: 70px; height: 50px; font-size: 18px; background: #1f293d; color: white; border: 1px solid #444; }
+        a { color: #00f0ff; text-decoration: none; font-size: 16px; display: inline-block; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <h2>🚀 Space Shooter DX</h2>
+    <div class="ui">
+        <div>Wave: <span id="wave">1</span></div>
+        <div>Coins: $<span id="coins">0</span></div>
+        <div>Best Wave: <span id="highScore">1</span></div>
+    </div>
+
+    <canvas id="canvas" width="320" height="380"></canvas>
+
+    <div class="controls">
+        <button class="ctrl-btn" onmousedown="moveLeft()" ontouchstart="moveLeft()">👈 LEFT</button>
+        <button class="ctrl-btn" onmousedown="moveRight()" ontouchstart="moveRight()">RIGHT 👉</button>
+    </div>
+
+    <div class="shop">
+        <h3>Hangar Upgrades</h3>
+        <button id="upFireBtn" onclick="buyFireRate()">⚡ Fire Rate ($20)</button>
+        <button id="upDoubleBtn" onclick="buyDoubleShot()">🔫 Double Shot ($50)</button>
+    </div>
+
+    <p><a href="index.html">⬅️ Back to Game Hub</a></p>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let player = { x: 140, y: 320, width: 40, height: 40, speed: 8 };
+let bullets = [];
+let enemies = [];
+let boss = null;
+let wave = 1;
+let coins = parseInt(localStorage.getItem("space_coins")) || 0;
+let highScore = parseInt(localStorage.getItem("space_highScore")) || 1;
+
+let fireRateLv = parseInt(localStorage.getItem("space_fireRateLv")) || 1;
+let doubleShot = localStorage.getItem("space_doubleShot") === "true";
+
+let frame = 0;
+let shootInterval = Math.max(8, 25 - (fireRateLv - 1) * 4);
+
+function updateUI() {
+    document.getElementById("wave").innerText = wave;
+    document.getElementById("coins").innerText = coins;
+    document.getElementById("highScore").innerText = highScore;
+
+    let fireCost = fireRateLv * 20;
+    document.getElementById("upFireBtn").innerText = `⚡ Fire Rate Lv ${fireRateLv + 1} ($${fireCost})`;
+    document.getElementById("upFireBtn").disabled = coins < fireCost || fireRateLv >= 5;
+
+    document.getElementById("upDoubleBtn").innerText = doubleShot ? "🔫 Double Shot (MAX)" : "🔫 Double Shot ($50)";
+    document.getElementById("upDoubleBtn").disabled = coins < 50 || doubleShot;
+}
+updateUI();
+
+function moveLeft() { if (player.x > 10) player.x -= 25; }
+function moveRight() { if (player.x < canvas.width - player.width - 10) player.x += 25; }
+
+// Touch Drag Support
+canvas.addEventListener("touchmove", (e) => {
+    let rect = canvas.getBoundingClientRect();
+    let touchX = e.touches[0].clientX - rect.left;
+    player.x = Math.max(0, Math.min(canvas.width - player.width, touchX - player.width / 2));
+});
+
+function buyFireRate() {
+    let cost = fireRateLv * 20;
+    if (coins >= cost && fireRateLv < 5) {
+        coins -= cost;
+        fireRateLv++;
+        shootInterval = Math.max(8, 25 - (fireRateLv - 1) * 4);
+        localStorage.setItem("space_coins", coins);
+        localStorage.setItem("space_fireRateLv", fireRateLv);
+        updateUI();
+    }
+}
+
+function buyDoubleShot() {
+    if (coins >= 50 && !doubleShot) {
+        coins -= 50;
+        doubleShot = true;
+        localStorage.setItem("space_coins", coins);
+        localStorage.setItem("space_doubleShot", "true");
+        updateUI();
+    }
+}
+
+function spawnWave() {
+    enemies = [];
+    if (wave % 5 === 0) {
+        // BOSS WAVE
+        boss = { x: 100, y: 30, width: 120, height: 60, hp: wave * 25, maxHp: wave * 25, dx: 2 };
+    } else {
+        boss = null;
+        let rows = Math.min(4, Math.floor(wave / 2) + 1);
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < 5; c++) {
+                enemies.push({ x: 30 + c * 55, y: 30 + r * 35, width: 30, height: 25, hp: 1 });
+            }
+        }
+    }
+}
+spawnWave();
+
+function shoot() {
+    if (doubleShot) {
+        bullets.push({ x: player.x + 5, y: player.y, width: 4, height: 12 });
+        bullets.push({ x: player.x + player.width - 9, y: player.y, width: 4, height: 12 });
+    } else {
+        bullets.push({ x: player.x + player.width / 2 - 2, y: player.y, width: 4, height: 12 });
+    }
+}
+
+function update() {
+    frame++;
+    if (frame % shootInterval === 0) shoot();
+
+    // Move Bullets
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        bullets[i].y -= 8;
+        if (bullets[i].y < -10) bullets.splice(i, 1);
+    }
+
+    // Boss Logic
+    if (boss) {
+        boss.x += boss.dx;
+        if (boss.x <= 10 || boss.x + boss.width >= canvas.width - 10) boss.dx *= -1;
+
+        // Bullet vs Boss
+        for (let b = bullets.length - 1; b >= 0; b--) {
+            if (bullets[b].x > boss.x && bullets[b].x < boss.x + boss.width &&
+                bullets[b].y > boss.y && bullets[b].y < boss.y + boss.height) {
+                boss.hp--;
+                bullets.splice(b, 1);
+                if (boss.hp <= 0) {
+                    coins += wave * 10;
+                    boss = null;
+                    nextWave();
+                    break;
+                }
+            }
+        }
+    } else {
+        // Regular Enemies Logic
+        let enemyReachBottom = false;
+        for (let e = enemies.length - 1; e >= 0; e--) {
+            enemies[e].y += 0.3 + wave * 0.05;
+            if (enemies[e].y + enemies[e].height >= player.y) enemyReachBottom = true;
+
+            // Bullet vs Enemy
+            for (let b = bullets.length - 1; b >= 0; b--) {
+                if (bullets[b].x > enemies[e].x && bullets[b].x < enemies[e].x + enemies[e].width &&
+                    bullets[b].y > enemies[e].y && bullets[b].y < enemies[e].y + enemies[e].height) {
+                    enemies.splice(e, 1);
+                    bullets.splice(b, 1);
+                    coins += 1;
+                    updateUI();
+                    break;
+                }
+            }
+        }
+
+        if (enemies.length === 0) nextWave();
+        if (enemyReachBottom) resetGame();
+    }
+}
+
+function nextWave() {
+    wave++;
+    if (wave > highScore) {
+        highScore = wave;
+        localStorage.setItem("space_highScore", highScore);
+    }
+    localStorage.setItem("space_coins", coins);
+    updateUI();
+    spawnWave();
+}
+
+function resetGame() {
+    alert("Game Over! Restarting at Wave 1.");
+    wave = 1;
+    bullets = [];
+    spawnWave();
+    updateUI();
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Player Ship (Cyan Triangle/Box)
+    ctx.fillStyle = "#00f0ff";
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+
+    // Bullets (Yellow)
+    ctx.fillStyle = "#ffe600";
+    bullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
+
+    // Boss
+    if (boss) {
+        ctx.fillStyle = "#ff0055";
+        ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
+        // Boss Health Bar
+        ctx.fillStyle = "#333";
+        ctx.fillRect(boss.x, boss.y - 12, boss.width, 8);
+        ctx.fillStyle = "#00ff66";
+        ctx.fillRect(boss.x, boss.y - 12, (boss.hp / boss.maxHp) * boss.width, 8);
+    } else {
+        // Regular Enemies (Red)
+        ctx.fillStyle = "#ff0055";
+        enemies.forEach(e => ctx.fillRect(e.x, e.y, e.width, e.height));
+    }
+}
+
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
