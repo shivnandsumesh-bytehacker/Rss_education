@@ -1,54 +1,128 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>iPad Arcade Hub - 15 Games</title>
+    <title>Arcade Hub</title>
+    <script src="arcade.js"></script>
     <style>
-        * { box-sizing: border-box; }
-        body { margin: 0; background: #121212; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
-        h1 { margin-bottom: 5px; color: #FF9800; }
-        p { color: #aaa; margin-bottom: 20px; }
-        .category-title { font-size: 20px; color: #4CAF50; margin: 25px 0 10px 0; text-align: left; max-width: 600px; margin-left: auto; margin-right: auto; border-bottom: 2px solid #333; padding-bottom: 5px; }
-        .arcade-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; max-width: 600px; margin: 0 auto; }
-        .game-card { background: #222; text-decoration: none; color: white; padding: 15px 10px; border-radius: 10px; font-size: 16px; font-weight: bold; border: 2px solid #444; display: block; transition: 0.2s; }
-        .game-card:active { background: #FF9800; border-color: #FF9800; color: black; }
-        .unique-card { border-color: #00BCD4; color: #00E5FF; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Top Header Bar */
+        header {
+            width: 100%;
+            background-color: #1e293b;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #334155;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #38bdf8;
+            letter-spacing: 1px;
+        }
+
+        .coin-box {
+            background-color: #0f172a;
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid #f59e0b;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #fbbf24;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Games Grid */
+        main {
+            max-width: 1200px;
+            width: 100%;
+            padding: 30px 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .game-card {
+            background-color: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            text-decoration: none;
+            color: #f8fafc;
+            font-weight: bold;
+            border: 1px solid #334155;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .game-card:hover {
+            transform: translateY(-5px);
+            border-color: #38bdf8;
+            background-color: #334155;
+        }
     </style>
 </head>
 <body>
 
-    <h1>🎮 Student Arcade Hub</h1>
-    <p>15 Unblocked Games with High Score Saving</p>
+    <header>
+        <div class="logo">🎮 Arcade Hub</div>
+        <div class="coin-box">
+            🪙 <span id="coins">0</span>
+        </div>
+    </header>
 
-    <!-- ACTION & ARCADE -->
-    <div class="category-title">⚡ Action & Arcade</div>
-    <div class="arcade-container">
-        <a href="car.html" class="game-card">🚗 1. Car Runner</a>
-        <a href="snake.html" class="game-card">🐍 2. Snake</a>
-        <a href="bird.html" class="game-card">🐤 3. Flappy Bird</a>
-        <a href="pong.html" class="game-card">🏓 4. Retro Pong</a>
-        <a href="space.html" class="game-card">🚀 5. Space Shooter</a>
-    </div>
-
-    <!-- PUZZLE & BRAIN -->
-    <div class="category-title">🧠 Puzzle & Logic</div>
-    <div class="arcade-container">
-        <a href="memory.html" class="game-card">🃏 6. Memory Match</a>
-        <a href="2048.html" class="game-card">🔢 7. 2048 Tile Game</a>
-        <a href="tictactoe.html" class="game-card">❌ 8. Tic-Tac-Toe AI</a>
-        <a href="simon.html" class="game-card">🔔 9. Simon Says Memory</a>
-        <a href="maze.html" class="game-card">🌀 10. Maze Escape</a>
-    </div>
-
-    <!-- 🌟 UNIQUE SPECIAL GAMES -->
-    <div class="category-title">✨ Unique Concepts</div>
-    <div class="arcade-container">
-        <a href="clicker.html" class="game-card unique-card">👆 11. Coin Clicker Empire</a>
-        <a href="mathdash.html" class="game-card unique-card">➕ 12. Speed Math Dash</a>
-        <a href="colorcatch.html" class="game-card unique-card">🎨 13. Color Bucket Catch</a>
-        <a href="reaction.html" class="game-card">⚡ 14. Reaction Time Test</a>
-        <a href="doodle.html" class="game-card">🧗 15. Endless Jump</a>
-    </div>
+    <main>
+        <h1>Select a Game</h1>
+        <div class="grid">
+            <a href="bird.html" class="game-card">Flappy Bird</a>
+            <a href="pong.html" class="game-card">Pong</a>
+            <a href="space.html" class="game-card">Space Invaders</a>
+            <a href="memory.html" class="game-card">Memory Match</a>
+            <a href="2048.html" class="game-card">2048</a>
+            <a href="tictactoe.html" class="game-card">Tic-Tac-Toe</a>
+            <a href="simon.html" class="game-card">Simon Says</a>
+            <a href="maze.html" class="game-card">Maze Runner</a>
+            <a href="mathdash.html" class="game-card">Math Dash</a>
+            <a href="colorcatch.html" class="game-card">Color Catch</a>
+            <a href="tower.html" class="game-card">Tower Stack</a>
+            <a href="doodle.html" class="game-card">Doodle Jump</a>
+            <a href="car.html" class="game-card">Car Dodge</a>
+            <a href="clicker.html" class="game-card">Coin Clicker</a>
+            <a href="snake.html" class="game-card">Snake</a>
+        </div>
+    </main>
 
 </body>
 </html>
