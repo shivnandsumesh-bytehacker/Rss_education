@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Simon Says DX</title>
+    <style>
+        * { box-sizing: border-box; touch-action: manipulation; }
+        body { margin: 0; background: #121212; color: white; font-family: sans-serif; text-align: center; padding: 10px; }
+        .ui { font-size: 16px; margin: 10px; display: flex; justify-content: space-around; max-width: 320px; margin: 10px auto; }
+        .simon-board { width: 280px; height: 280px; border-radius: 50%; background: #222; margin: 20px auto; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.8); }
+        .btn { border-radius: 20px; opacity: 0.6; cursor: pointer; transition: opacity 0.1s, transform 0.1s; }
+        .btn:active, .btn.active { opacity: 1; transform: scale(0.96); filter: brightness(1.4); }
+        .green { background: #00e676; border-top-left-radius: 140px; }
+        .red { background: #ff1744; border-top-right-radius: 140px; }
+        .yellow { background: #ffea00; border-bottom-left-radius: 140px; }
+        .blue { background: #29b6f6; border-bottom-right-radius: 140px; }
+        .controls { max-width: 320px; margin: 15px auto; display: flex; justify-content: center; gap: 10px; }
+        button.start-btn { padding: 10px 20px; font-size: 16px; font-weight: bold; background: #00e676; color: #000; border: none; border-radius: 6px; cursor: pointer; }
+        a { color: #29b6f6; text-decoration: none; font-size: 16px; display: inline-block; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <h2>🧠 Simon Says DX</h2>
+    <div class="ui">
+        <div>Score: <span id="score">0</span></div>
+        <div>Coins: $<span id="coins">0</span></div>
+        <div>Best: <span id="highScore">0</span></div>
+    </div>
+
+    <div class="simon-board">
+        <div class="btn green" id="btn-0" onclick="handleInput(0)"></div>
+        <div class="btn red" id="btn-1" onclick="handleInput(1)"></div>
+        <div class="btn yellow" id="btn-2" onclick="handleInput(2)"></div>
+        <div class="btn blue" id="btn-3" onclick="handleInput(3)"></div>
+    </div>
+
+    <div class="controls">
+        <button class="start-btn" onclick="startGame()">Start Game</button>
+    </div>
+
+    <p><a href="index.html">⬅️ Back to Game Hub</a></p>
+
+<script>
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const freqs = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
+
+let sequence = [];
+let playerStep = 0;
+let isPlayingSequence = false;
+let gameStarted = false;
+
+let score = 0;
+let coins = parseInt(localStorage.getItem("simon_coins")) || 0;
+let highScore = parseInt(localStorage.getItem("simon_highScore")) || 0;
+
+function updateUI() {
+    document.getElementById("score").innerText = score;
+    document.getElementById("coins").innerText = coins;
+    document.getElementById("highScore").innerText = highScore;
+}
+updateUI();
+
+function playTone(index, duration = 300) {
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freqs[index];
+    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration / 1000);
+
+    const btn = document.getElementById(`btn-${index}`);
+    btn.classList.add('active');
+    setTimeout(() => btn.classList.remove('active'), duration - 50);
+}
+
+function startGame() {
+    sequence = [];
+    score = 0;
+    playerStep = 0;
+    gameStarted = true;
+    updateUI();
+    nextRound();
+}
+
+function nextRound() {
+    playerStep = 0;
+    sequence.push(Math.floor(Math.random() * 4));
+    playSequence();
+}
+
+function playSequence() {
+    isPlayingSequence = true;
+    let i = 0;
+    const interval = setInterval(() => {
+        playTone(sequence[i]);
+        i++;
+        if (i >= sequence.length) {
+            clearInterval(interval);
+            setTimeout(() => { isPlayingSequence = false; }, 300);
+        }
+    }, 600);
+}
+
+function handleInput(index) {
+    if (!gameStarted || isPlayingSequence) return;
+
+    playTone(index, 200);
+
+    if (index === sequence[playerStep]) {
+        playerStep++;
+        if (playerStep === sequence.length) {
+            score++;
+            coins += 2;
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem("simon_highScore", highScore);
+            }
+            localStorage.setItem("simon_coins", coins);
+            updateUI();
+            isPlayingSequence = true;
+            setTimeout(nextRound, 1000);
+        }
+    } else {
+        gameStarted = false;
+        setTimeout(() => {
+            alert(`Game Over! Final Score: ${score}`);
+        }, 200);
+    }
+}
+</script>
+</body>
+</html>
