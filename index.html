@@ -3,126 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arcade Hub</title>
+    <title>Arcade Shop</title>
     <script src="arcade.js"></script>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+        body { background: #0f172a; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; }
+        .top-bar { font-size: 1.5rem; margin-bottom: 20px; color: #facc15; font-weight: bold; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; max-width: 900px; margin: 0 auto; }
+        .card { background: #1e293b; border: 2px solid #38bdf8; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; }
+        .card h3 { margin: 10px 0 5px 0; }
+        .card p { font-size: 0.9rem; color: #94a3b8; margin-bottom: 15px; }
+        .btn { background: #38bdf8; color: #0f172a; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; }
+        .btn:disabled { background: #475569; color: #94a3b8; cursor: not-allowed; }
+        .btn.equipped { background: #22c55e; color: white; }
+        a { color: #38bdf8; text-decoration: none; margin-top: 25px; display: inline-block; font-size: 1.1rem; }
 
-        body {
-            background-color: #0f172a;
-            color: #f8fafc;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        /* Top Header Bar */
-        header {
-            width: 100%;
-            background-color: #1e293b;
-            padding: 15px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid #334155;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .logo {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #38bdf8;
-            letter-spacing: 1px;
-        }
-
-        .coin-box {
-            background-color: #0f172a;
-            padding: 8px 16px;
-            border-radius: 20px;
-            border: 1px solid #f59e0b;
-            font-size: 1.1rem;
-            font-weight: bold;
-            color: #fbbf24;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        /* Games Grid */
-        main {
-            max-width: 1200px;
-            width: 100%;
-            padding: 30px 20px;
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-            font-size: 2rem;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
-        }
-
-        .game-card {
-            background-color: #1e293b;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            text-decoration: none;
-            color: #f8fafc;
-            font-weight: bold;
-            border: 1px solid #334155;
-            transition: transform 0.2s, border-color 0.2s;
-        }
-
-        .game-card:hover {
-            transform: translateY(-5px);
-            border-color: #38bdf8;
-            background-color: #334155;
-        }
+        /* Themes */
+        body.theme-cyberpunk { background: #18022b; color: #00ffcc; }
+        body.theme-matrix { background: #001100; color: #00ff00; }
+        body.theme-sunset { background: #2d0b1e; color: #ff7e5f; }
     </style>
 </head>
 <body>
 
-    <header>
-        <div class="logo">🎮 Arcade Hub</div>
-        <div class="coin-box">
-            🪙 <span id="coins">0</span>
-        </div>
-    </header>
+    <h1>🛍️ Arcade Shop</h1>
+    <div class="top-bar">🪙 Coins: <span id="coin-count">0</span></div>
 
-    <main>
-        <h1>Select a Game</h1>
-        <div class="grid">
-            <a href="bird.html" class="game-card">Flappy Bird</a>
-            <a href="pong.html" class="game-card">Pong</a>
-            <a href="space.html" class="game-card">Space Invaders</a>
-            <a href="memory.html" class="game-card">Memory Match</a>
-            <a href="2048.html" class="game-card">2048</a>
-            <a href="tictactoe.html" class="game-card">Tic-Tac-Toe</a>
-            <a href="simon.html" class="game-card">Simon Says</a>
-            <a href="maze.html" class="game-card">Maze Runner</a>
-            <a href="mathdash.html" class="game-card">Math Dash</a>
-            <a href="colorcatch.html" class="game-card">Color Catch</a>
-            <a href="tower.html" class="game-card">Tower Stack</a>
-            <a href="doodle.html" class="game-card">Doodle Jump</a>
-            <a href="car.html" class="game-card">Car Dodge</a>
-            <a href="clicker.html" class="game-card">Coin Clicker</a>
-            <a href="snake.html" class="game-card">Snake</a>
+    <h2>Themes</h2>
+    <div class="grid">
+        <div class="card">
+            <h3>Cyberpunk Neon</h3>
+            <p>Futuristic purple and neon glow background.</p>
+            <button class="btn" onclick="handleTheme('cyberpunk', 20, this)">Buy (20 Coins)</button>
         </div>
-    </main>
+        <div class="card">
+            <h3>Retro Matrix</h3>
+            <p>Classic hacker green terminal style.</p>
+            <button class="btn" onclick="handleTheme('matrix', 30, this)">Buy (30 Coins)</button>
+        </div>
+    </div>
 
+    <h2>Skins</h2>
+    <div class="grid">
+        <div class="card">
+            <h3>Golden Skin</h3>
+            <p>Golden player color across Snake and Pong.</p>
+            <button class="btn" onclick="handleSkin('gold', 15, this)">Buy (15 Coins)</button>
+        </div>
+        <div class="card">
+            <h3>Neon Green Skin</h3>
+            <p>Vibrant glowing green player avatar.</p>
+            <button class="btn" onclick="handleSkin('neongreen', 15, this)">Buy (15 Coins)</button>
+        </div>
+    </div>
+
+    <h2>Powerups</h2>
+    <div class="grid">
+        <div class="card">
+            <h3>2x Coin Multiplier</h3>
+            <p>Permanently doubles all earned coins.</p>
+            <button class="btn" onclick="handlePowerup('coin_multiplier', 50, this)">Buy (50 Coins)</button>
+        </div>
+    </div>
+
+    <br>
+    <a href="index.html">← Back to Hub</a>
+
+    <script>
+        function renderShop() {
+            Arcade.updateUI();
+
+            // Themes
+            updateItemBtn('cyberpunk', 20, () => Arcade.getEquippedTheme() === 'cyberpunk', 'theme');
+            updateItemBtn('matrix', 30, () => Arcade.getEquippedTheme() === 'matrix', 'theme');
+
+            // Skins
+            updateItemBtn('gold', 15, () => Arcade.getEquippedSkin() === 'gold', 'skin');
+            updateItemBtn('neongreen', 15, () => Arcade.getEquippedSkin() === 'neongreen', 'skin');
+
+            // Powerups
+            updateItemBtn('coin_multiplier', 50, () => Arcade.getPowerup('coin_multiplier'), 'powerup');
+        }
+
+        function updateItemBtn(id, price, isEquippedCheck, type) {
+            const btns = document.querySelectorAll(`button[onclick*="'${id}'"]`);
+            btns.forEach(btn => {
+                const has = Arcade.hasItem(id);
+                if (type === 'powerup') {
+                    if (has) {
+                        btn.innerText = "Active";
+                        btn.disabled = true;
+                        btn.classList.add("equipped");
+                    }
+                } else {
+                    if (isEquippedCheck()) {
+                        btn.innerText = "Equipped";
+                        btn.classList.add("equipped");
+                    } else if (has) {
+                        btn.innerText = "Equip";
+                        btn.classList.remove("equipped");
+                    } else {
+                        btn.innerText = `Buy (${price} Coins)`;
+                    }
+                }
+            });
+        }
+
+        function handleTheme(id, price) {
+            if (!Arcade.hasItem(id)) {
+                if (!Arcade.buyItem(id, price)) return alert("Not enough coins!");
+            }
+            Arcade.setEquippedTheme(Arcade.getEquippedTheme() === id ? 'default' : id);
+            renderShop();
+        }
+
+        function handleSkin(id, price) {
+            if (!Arcade.hasItem(id)) {
+                if (!Arcade.buyItem(id, price)) return alert("Not enough coins!");
+            }
+            Arcade.setEquippedSkin(Arcade.getEquippedSkin() === id ? 'default' : id);
+            renderShop();
+        }
+
+        function handlePowerup(id, price) {
+            if (!Arcade.hasItem(id)) {
+                if (Arcade.buyItem(id, price)) {
+                    Arcade.setPowerup(id, true);
+                    renderShop();
+                } else {
+                    alert("Not enough coins!");
+                }
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", renderShop);
+    </script>
 </body>
 </html>
